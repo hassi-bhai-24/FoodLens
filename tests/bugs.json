@@ -1,0 +1,219 @@
+[
+  {
+    "id": "B1",
+    "severity": "High",
+    "definition": "Scope guard covered only 3 patterns (code/stocks/homework-math order); cricket, capitals, jokes, hacking, sadness, emails all fell through to the provider (or 401)",
+    "fix": "New `lib/guards.ts`: general category patterns for coding, homework, geography, sport, jokes, hacking, email/finance, plus empathetic sadness handling and Urdu/Arabic redirects; checked for every user turn",
+    "status": "Fixed; tests 65–72 return the redirect."
+  },
+  {
+    "id": "B2",
+    "severity": "Critical",
+    "definition": "No deterministic safety handling for dangerous requests (extreme dieting, stop medicine, cures, wild mushrooms, expired food, chemicals, alcohol for minors, dog chocolate, vomiting blood)",
+    "fix": "`lib/guards.ts` safety layer runs before any provider call, with emergency-first ordering",
+    "status": "Fixed; tests 81–88 + 43–44 return the safety reply."
+  },
+  {
+    "id": "B3",
+    "severity": "High",
+    "definition": "No prompt-injection defence beyond the prompt text; key/prompt disclosure, role-switch and admin claims went to the provider",
+    "fix": "`lib/guards.ts` injection patterns (ignore instructions, show/reveal key or prompt, role-switch, SYSTEM admin, fake endorsement, crash request)",
+    "status": "Fixed; tests 89–98 pass (93 image text now PASS live); multilingual extension in Phase 1 Batch 5."
+  },
+  {
+    "id": "B4",
+    "severity": "High",
+    "definition": "System prompt in `lib/types.ts` was shorter than `prompts/foodlens.system.v1.md` and lacked rules for pros/cons+verdict, brand-only/unknown brands, halal/vegan/allergen-only-from-label, age/condition specifics, language handling, photo cases, fake endorsements, memory isolation",
+    "fix": "Expanded `FOODLENS_SYSTEM_PROMPT` with all of those rules; synced `prompts/foodlens.system.v1.md` and noted they must stay in sync",
+    "status": "Fixed in prompt; static audit (live answers were NOT RUN in that pass)."
+  },
+  {
+    "id": "B5",
+    "severity": "Medium",
+    "definition": "About-me notes were appended to the system prompt as plain text, so instruction-like text in Settings could act as instructions",
+    "fix": "Notes are now delimited in `<User-provided notes…>` tags labelled as untrusted user data only, plus a prompt rule to treat them as data",
+    "status": "Fixed; now sent only via `lib/delimit.ts` (Phase 1 Batch 5)."
+  },
+  {
+    "id": "B6",
+    "severity": "Medium",
+    "definition": "Server barcode route accepted wrong check digits (e.g. 3017620422004, 5449000000997) and sent them to Open Food Facts",
+    "fix": "New `lib/checkdigit.ts` shared by client and server; route returns 400 for invalid check digits and all-zero codes",
+    "status": "Fixed; verified."
+  },
+  {
+    "id": "B7",
+    "severity": "Medium",
+    "definition": "Barcode not in Open Food Facts returned generic 502 instead of the designed not-found response",
+    "fix": "404 now returns 200 with `missing: [\"product not found in Open Food Facts\"]`",
+    "status": "Fixed; verified with 3141592653582."
+  },
+  {
+    "id": "B8",
+    "severity": "Low",
+    "definition": "Barcode route listed only name/ingredients/nutrition as missing, not brands/categories",
+    "fix": "Missing now also includes brands and categories when absent/empty",
+    "status": "Fixed; verified."
+  },
+  {
+    "id": "B9",
+    "severity": "High",
+    "definition": "SSRF bypass: IPv6 link-local (`fe80::`), ULA (`fd00::`) and IPv4-mapped (`::ffff:127.0.0.1`) base URLs passed `isSafeHttpsUrl` and were fetched",
+    "fix": "`isPrivateIPv6` blocking loopback, link-local, ULA and mapped forms, with bracket normalisation",
+    "status": "Fixed; unit + HTTP checks block them."
+  },
+  {
+    "id": "B10",
+    "severity": "Medium",
+    "definition": "Compatible-provider fetch followed redirects, so a public URL redirecting to a private address could bypass the SSRF check",
+    "fix": "`redirect: \"manual\"` for user-supplied base URLs; 3xx treated as a provider error",
+    "status": "Fixed in code; redirect-target fetch NOT RUN."
+  },
+  {
+    "id": "B11",
+    "severity": "Medium",
+    "definition": "One shared rate-limit bucket (30/min/IP) across chat, barcode, models and search, checked before the scope guard; the first QA battery masked all guard results with 429s",
+    "fix": "Per-scope buckets (`chat`, `barcode`, `models`, `search`)",
+    "status": "Fixed; 10 rapid chat calls, no 429."
+  },
+  {
+    "id": "B12",
+    "severity": "High",
+    "definition": "API key sent as a URL query parameter (`/api/models?key=`) from the client — keys end up in history, logs and referrers",
+    "fix": "Key now travels in the `Authorization: Bearer` header; server reads header (or env key) and ignores the query key",
+    "status": "Fixed; live list with a real key NOT RUN in that pass."
+  },
+  {
+    "id": "B13",
+    "severity": "Medium",
+    "definition": "Chat validation gaps: `role` values not validated, no total-history cap, image mime/base64 not validated server-side, empty/whitespace messages accepted",
+    "fix": "Role validation, 60,000-char total cap, mime allowlist (JPEG/PNG/WebP/GIF), base64 check, 20 MB total image cap, empty-message 400",
+    "status": "Fixed; 400s verified."
+  },
+  {
+    "id": "B14",
+    "severity": "Medium",
+    "definition": "Local provider silently dropped images instead of erroring, so photo questions looked answered by a model that never saw the photo",
+    "fix": "Local + images → 400 with a clear message naming vision-provider alternatives",
+    "status": "Fixed; verified."
+  },
+  {
+    "id": "B15",
+    "severity": "Medium",
+    "definition": "No file-size or dimension guard before `createImageBitmap`; corrupt images relied on the caller's catch",
+    "fix": "10 MB file cap, 16,000 px dimension cap, corrupt-file friendly error",
+    "status": "Fixed in code; browser decoding NOT RUN. UI check in Phase 1 Batch 7."
+  },
+  {
+    "id": "B16",
+    "severity": "Low",
+    "definition": "Ordered list immediately after a bullet list rendered as bullets (`<ul>`)",
+    "fix": "List block ends when marker style changes",
+    "status": "Fixed; unit-tested."
+  },
+  {
+    "id": "B17",
+    "severity": "Low",
+    "definition": "README claimed rename via first-message title, but no Rename control existed",
+    "fix": "Rename (✎) button per chat in the sidebar, 1–60 chars, saved via `saveChat`",
+    "status": "Fixed; UI check in Phase 1 Batch 7."
+  },
+  {
+    "id": "B18",
+    "severity": "Medium",
+    "definition": "Edit & resend saved the trimmed chat, then `send()` re-read the stale `active` closure, so the untrimmed history could be sent",
+    "fix": "`send(text, baseChat, baseHistory)` takes the trimmed chat/history explicitly",
+    "status": "Fixed in code; manual UI check in MANUAL-UI-CHECKLIST.md §1."
+  },
+  {
+    "id": "B19",
+    "severity": "Medium",
+    "definition": "Draft was cleared before the API call, so a failed send lost the typed text and attachments",
+    "fix": "`streamReply` returns whether anything was sent; on failure the draft text/attachments are restored",
+    "status": "Fixed in code; UI check in Phase 1 Batch 7."
+  },
+  {
+    "id": "B20",
+    "severity": "Medium",
+    "definition": "\"Clear app data\" re-created a settings row with `undefined` and left saved session keys in the vault",
+    "fix": "Removed the `putKv(\"settings\", undefined)` line; clear handler now removes keys for every provider and resets key state",
+    "status": "Fixed in code; UI check in Phase 1 Batch 7."
+  },
+  {
+    "id": "B21",
+    "severity": "Low",
+    "definition": "Import chats parsed JSON as `Chat[]` with no shape validation — a malformed file could corrupt IndexedDB",
+    "fix": "Shape validation (id, title, messages with valid roles/text); invalid files rejected with an error",
+    "status": "Fixed in code; UI check in Phase 1 Batch 7."
+  },
+  {
+    "id": "B22",
+    "severity": "Low",
+    "definition": "Web-search toggle gave no caveat that search is silently ignored for Anthropic/compatible/local providers",
+    "fix": "Label now says \"(Gemini and OpenAI only; ignored by Claude, compatible and local providers)\"",
+    "status": "Fixed; manual UI check in MANUAL-UI-CHECKLIST.md §2."
+  },
+  {
+    "id": "B23",
+    "severity": "Low",
+    "definition": "Client checked image count against the provider cap but not total bytes against `maxImageBytes`",
+    "fix": "Total image bytes checked with `dataUrlSizeBytes` before sending",
+    "status": "Fixed in code; manual UI check in MANUAL-UI-CHECKLIST.md §3."
+  },
+  {
+    "id": "B24",
+    "severity": "High",
+    "definition": "Default Gemini model `gemini-2.5-flash` returns 404 for this key (\"no longer available to new users\"); `/api/chat` with no model returned a generic 502 telling the user to check their key, when the key was fine",
+    "fix": "Default changed to `gemini-3.5-flash` (verified live via `/api/chat` and the helper). No other file referenced the old default.",
+    "status": "Fixed in code; live 404-fallback probe deferred to Phase 2."
+  },
+  {
+    "id": "B25",
+    "severity": "High",
+    "definition": "Brand-only answers stated a brand's \"typical\" ingredients/nutrients/certifications as fact (Kurkure composition, Gluco fortification with calcium/iron, Lu Candi ingredient list, Milo fortification, Doritos full ingredient list, Haribo vegetarian status) before hedging or asking for the label",
+    "fix": "Prompt strengthened in both files: no ingredient/nutrient/certification listing at all for a named brand without a label, not even as \"typically\"; category-only description + unknown-recipe statement + label request; halal/vegan/allergen cannot be confirmed without the label",
+    "status": "Fixed in prompt; live re-verification deferred to Phase 2."
+  },
+  {
+    "id": "B26",
+    "severity": "Medium",
+    "definition": "Allergen question answered only the first item: groundnut oil covered, sesame and wheat in the same list ignored",
+    "fix": "Prompt rule added: address every item in a listed set one by one, flag other major allergens",
+    "status": "Fixed in prompt; live re-verification deferred to Phase 2."
+  },
+  {
+    "id": "B27",
+    "severity": "Medium",
+    "definition": "Missing-photo reply contained no guidance: \"Can she eat this biscuit?\" (8-month-old, no photo) got only a photo request, no age guidance",
+    "fix": "Prompt rule added: still give cautious general guidance for the age/condition/food named, then ask for the photo/ingredients",
+    "status": "Fixed in prompt."
+  },
+  {
+    "id": "B28",
+    "severity": "High",
+    "definition": "Blurry-label vision hallucination (RESIDUAL, still failing): the blurred synthetic label (Gaussian blur radius 7) was transcribed with invented E-numbers tagged [Directly visible] — E500/E923 on the first run, E500/E921 on the consistency re-run, E330/E921 after the prompt fix (true codes: E330/E621). The model invents a wrong second E-number every time",
+    "fix": "Prompt fix attempted in both prompt files; no deterministic fix exists server-side (no OCR). Recorded as PARTIAL/still-failing, not claimed fixed. Residual risk: vision answers for unreadable labels can invent additives. Mitigation for the product: always ask for a clearer photo or typed ingredients when a label is blurry, and treat vision transcriptions as unverified.",
+    "status": "Still failing — Phase 1 Batch 2."
+  },
+  {
+    "id": "B29",
+    "severity": "High",
+    "definition": "Made-up brand guessed as a similar product (RESIDUAL): \"Crunchy Zingo\" was treated as a KFC/Zinger fried-chicken item in two runs with the original prompt",
+    "fix": "Prompt rule added: a made-up/misspelled name is not the well-known product it resembles; say unverified, ask for the label",
+    "status": "Fixed in prompt; live re-verification deferred to Phase 2."
+  },
+  {
+    "id": "B30",
+    "severity": "Low",
+    "definition": "Prompt-file divergence (observation, not a live failure): `prompts/foodlens.system.v1.md` is a paraphrase with duplicated bullet blocks, not byte-identical to `FOODLENS_SYSTEM_PROMPT` in `lib/types.ts`, which is what the route actually sends. The helper fallback in this pass used the `lib/types.ts` text for fidelity.",
+    "fix": "New rules were added to both files in matching words. Recommend a single source of truth (generate one from the other) so future edits cannot diverge silently.",
+    "status": "Fixed."
+  },
+  {
+    "id": "B31",
+    "severity": "Medium",
+    "definition": "Mobile sidebar overlay (390px): the open sidebar covers the ☰ toggle and the lower part of the Settings dialog; closing requires selecting a chat. Found by Playwright in Phase 1 Batch 7.",
+    "fix": "Step A fix: visible ✕ close button in the sidebar (44px tap target, mobile only), a backdrop that closes the sidebar on tap, Esc closes the sidebar, the Settings dialog is fixed above the sidebar (z-index 60) with its own scroll (max-height calc(100dvh - 32px)), and opening Settings or Offline AI closes the sidebar. Verified with Playwright at 360/390/430px and in landscape (see QA-PROGRESS.md, Step A). Parent-verification refinement: the sidebar starts below the measured header height, so the menu toggle is never covered and remains tappable to close the sidebar.",
+    "status": "Fixed in Step A; visually verified with Playwright at 360/390/430px and in landscape (screenshots in /tmp/b31-screenshots/, not in the project). Confirm on a real phone (MANUAL-UI-CHECKLIST.md §7)."
+  }
+]

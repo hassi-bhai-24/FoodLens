@@ -1,0 +1,1517 @@
+[
+  {
+    "id": 1,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 2,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 3,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 4,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 5,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 6,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 7,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 8,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 9,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 10,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 11,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 12,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 13,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 14,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 15,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 16,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 17,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 18,
+    "verdict": "PARTIAL",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.3",
+    "promptNote": "Step C: hash recorded in QA-RESULTS.json",
+    "runs": "17 documented (6 prior + 11 Step C: 10 two-step + 1 wrong-confirmation)",
+    "promptHash": "f84b46145da0f5c0a9b5fb015a19663cfb761a8ce81748dd9ffc41a901a30cea",
+    "finalPromptRun": "re-run on final prompt"
+  },
+  {
+    "id": 19,
+    "verdict": "PARTIAL",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 20,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 21,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 22,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 23,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 24,
+    "verdict": "PARTIAL",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "2+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 25,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.3",
+    "promptNote": "Step C: hash recorded in QA-RESULTS.json",
+    "runs": "3 Step C runs (2026-11-02)",
+    "promptHash": "f84b46145da0f5c0a9b5fb015a19663cfb761a8ce81748dd9ffc41a901a30cea",
+    "finalPromptRun": "re-run on final prompt"
+  },
+  {
+    "id": 26,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.3",
+    "promptNote": "Step C: hash recorded in QA-RESULTS.json",
+    "runs": "3 Step C runs (2026-11-02)",
+    "promptHash": "f84b46145da0f5c0a9b5fb015a19663cfb761a8ce81748dd9ffc41a901a30cea",
+    "finalPromptRun": "re-run on final prompt"
+  },
+  {
+    "id": 27,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.3",
+    "promptNote": "Step C: hash recorded in QA-RESULTS.json",
+    "runs": "3 Step C runs (2026-11-02)",
+    "promptHash": "f84b46145da0f5c0a9b5fb015a19663cfb761a8ce81748dd9ffc41a901a30cea",
+    "finalPromptRun": "re-run on final prompt"
+  },
+  {
+    "id": 28,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.3",
+    "promptNote": "Step C: hash recorded in QA-RESULTS.json",
+    "runs": "3 Step C runs (2026-11-02)",
+    "promptHash": "f84b46145da0f5c0a9b5fb015a19663cfb761a8ce81748dd9ffc41a901a30cea",
+    "finalPromptRun": "re-run on final prompt"
+  },
+  {
+    "id": 29,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 30,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 31,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 32,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 33,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 34,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 35,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 36,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 37,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.3",
+    "promptNote": "Step C: hash recorded in QA-RESULTS.json",
+    "runs": "3 Step C runs (2026-11-02)",
+    "promptHash": "f84b46145da0f5c0a9b5fb015a19663cfb761a8ce81748dd9ffc41a901a30cea",
+    "finalPromptRun": "re-run on final prompt"
+  },
+  {
+    "id": 38,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 39,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 40,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.3",
+    "promptNote": "Step C: hash recorded in QA-RESULTS.json",
+    "runs": "3 Step C runs (2026-11-02)",
+    "promptHash": "f84b46145da0f5c0a9b5fb015a19663cfb761a8ce81748dd9ffc41a901a30cea",
+    "finalPromptRun": "re-run on final prompt"
+  },
+  {
+    "id": 41,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.3",
+    "promptNote": "Step C: hash recorded in QA-RESULTS.json",
+    "runs": "3 Step C runs (2026-11-02)",
+    "promptHash": "f84b46145da0f5c0a9b5fb015a19663cfb761a8ce81748dd9ffc41a901a30cea",
+    "finalPromptRun": "re-run on final prompt"
+  },
+  {
+    "id": 42,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.3",
+    "promptNote": "Step C: hash recorded in QA-RESULTS.json",
+    "runs": "3 Step C runs (2026-11-02)",
+    "promptHash": "f84b46145da0f5c0a9b5fb015a19663cfb761a8ce81748dd9ffc41a901a30cea",
+    "finalPromptRun": "re-run on final prompt"
+  },
+  {
+    "id": 43,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "3 Step C guard runs (2026-11-02)",
+    "promptHash": null,
+    "finalPromptRun": "re-run on final prompt"
+  },
+  {
+    "id": 44,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "3 Step C guard runs (2026-11-02)",
+    "promptHash": null,
+    "finalPromptRun": "re-run on final prompt"
+  },
+  {
+    "id": 45,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 46,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 47,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 48,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 49,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 50,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 51,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 52,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 53,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "Open Food Facts lookup (no model)",
+    "temperature": "—",
+    "promptNote": "n/a (barcode, lib/barcode.ts)",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 54,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "Open Food Facts lookup (no model)",
+    "temperature": "—",
+    "promptNote": "n/a (barcode, lib/barcode.ts)",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 55,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "Open Food Facts lookup (no model)",
+    "temperature": "—",
+    "promptNote": "n/a (barcode, lib/barcode.ts)",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 56,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "Open Food Facts lookup (no model)",
+    "temperature": "—",
+    "promptNote": "n/a (barcode, lib/barcode.ts)",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 57,
+    "verdict": "NOT RUN",
+    "lastRun": "— (not run)",
+    "model": "—",
+    "temperature": "—",
+    "promptNote": "—",
+    "runs": "0",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 58,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "Open Food Facts lookup (no model)",
+    "temperature": "—",
+    "promptNote": "n/a (barcode, lib/barcode.ts)",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 59,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 60,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 61,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 62,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 63,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 64,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 65,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 66,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 67,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 68,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 69,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 70,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 71,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 72,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 73,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 74,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 75,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 76,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 77,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 78,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 79,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 80,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 81,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 82,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 83,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 84,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 85,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 86,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 87,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 88,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 89,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 90,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 91,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 92,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 93,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 94,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 95,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 96,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 97,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 98,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 99,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 100,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 101,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 102,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 103,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 104,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 105,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 106,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — validation (HTTP 400)",
+    "temperature": "—",
+    "promptNote": "n/a (validation, app/api/chat/route.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 107,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "None — deterministic guard",
+    "temperature": "—",
+    "promptNote": "n/a (guard, lib/guards.ts)",
+    "runs": "2+ documented (deterministic + live regression)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 108,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 109,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 110,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 111,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 112,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 113,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 114,
+    "verdict": "PARTIAL",
+    "lastRun": "2026-11-02",
+    "model": "Deterministic + live Gemini (see QA-HISTORY.md)",
+    "temperature": "— / 0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "2+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 115,
+    "verdict": "PARTIAL",
+    "lastRun": "2026-11-02",
+    "model": "Deterministic + live Gemini (see QA-HISTORY.md)",
+    "temperature": "— / 0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "2+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 116,
+    "verdict": "NOT RUN",
+    "lastRun": "— (not run)",
+    "model": "—",
+    "temperature": "—",
+    "promptNote": "—",
+    "runs": "0",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 117,
+    "verdict": "PARTIAL",
+    "lastRun": "2026-11-02",
+    "model": "Deterministic + live Gemini (see QA-HISTORY.md)",
+    "temperature": "— / 0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "2+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 118,
+    "verdict": "NOT RUN",
+    "lastRun": "— (not run)",
+    "model": "—",
+    "temperature": "—",
+    "promptNote": "—",
+    "runs": "0",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 119,
+    "verdict": "NOT RUN",
+    "lastRun": "— (not run)",
+    "model": "—",
+    "temperature": "—",
+    "promptNote": "—",
+    "runs": "0",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 120,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 121,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 122,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 123,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 124,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 125,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 126,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.3",
+    "promptNote": "Step C: hash recorded in QA-RESULTS.json",
+    "runs": "3 Step C runs (2026-11-02)",
+    "promptHash": "f84b46145da0f5c0a9b5fb015a19663cfb761a8ce81748dd9ffc41a901a30cea",
+    "finalPromptRun": "re-run on final prompt"
+  },
+  {
+    "id": 127,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 128,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 129,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 130,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 131,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 132,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 133,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 134,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 135,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 136,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.3 (QA FIXES 2 re-test; 0.7 live)",
+    "promptNote": "See prompt note †",
+    "runs": "3+ documented (live + QA FIXES 2 re-test)",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 137,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 138,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 139,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 140,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 141,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.3",
+    "promptNote": "Step C: hash recorded in QA-RESULTS.json",
+    "runs": "3 Step C runs (2026-11-02)",
+    "promptHash": "f84b46145da0f5c0a9b5fb015a19663cfb761a8ce81748dd9ffc41a901a30cea",
+    "finalPromptRun": "re-run on final prompt"
+  },
+  {
+    "id": 142,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 143,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 144,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 145,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 146,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.3",
+    "promptNote": "Step C: hash recorded in QA-RESULTS.json",
+    "runs": "3 Step C runs (2026-11-02)",
+    "promptHash": "f84b46145da0f5c0a9b5fb015a19663cfb761a8ce81748dd9ffc41a901a30cea",
+    "finalPromptRun": "re-run on final prompt"
+  },
+  {
+    "id": 147,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 148,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  },
+  {
+    "id": 149,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.3",
+    "promptNote": "Step C: hash recorded in QA-RESULTS.json",
+    "runs": "3 Step C runs with synthetic packet photo (2026-11-02)",
+    "promptHash": "f84b46145da0f5c0a9b5fb015a19663cfb761a8ce81748dd9ffc41a901a30cea",
+    "finalPromptRun": "re-run on final prompt"
+  },
+  {
+    "id": 150,
+    "verdict": "PASS",
+    "lastRun": "2026-11-02",
+    "model": "gemini-3.5-flash-lite",
+    "temperature": "0.7",
+    "promptNote": "Not recorded in live pass †",
+    "runs": "1+ documented",
+    "finalPromptRun": "not re-run on final prompt"
+  }
+]

@@ -1,0 +1,27 @@
+{
+  "dependencies": {
+    "next": "^15.5.7",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "description": "FOODLENS \u2014 Chat before you eat unhealthy. A food-only conversational AI chatbot (standalone Next.js build).",
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "name": "foodlens",
+  "private": true,
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev",
+    "start": "next start",
+    "sync-prompt": "node scripts/sync-prompt.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "version": "0.1.0"
+}
