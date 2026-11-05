@@ -1,5 +1,5 @@
 {
-  "background_color": "#0b1220",
+  "background_color": "#ffffff",
   "description": "FOODLENS \u2014 Chat before you eat unhealthy.",
   "display": "standalone",
   "icons": [
@@ -13,5 +13,5 @@
   "name": "FOODLENS",
   "short_name": "FOODLENS",
   "start_url": "/",
-  "theme_color": "#0b1220"
+  "theme_color": "#ffffff"
 }

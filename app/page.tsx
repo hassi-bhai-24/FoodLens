@@ -111,6 +111,10 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    // Only auto-scroll when there is actually a conversation to show.
+    // On the empty welcome screen (no messages) this used to scroll the
+    // greeting off the top of the screen on mobile on first load.
+    if ((active?.messages?.length ?? 0) === 0 && !thinking) return;
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [active?.messages, thinking]);
 
@@ -425,7 +429,7 @@ export default function Home() {
           <ul style={{ listStyle: "none", margin: 0, padding: 0, overflowY: "auto" }}>
             {filtered.map((c) => (
               <li key={c.id} style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 4px" }}>
-                <button style={{ flex: 1, textAlign: "left", background: "none", border: 0, fontWeight: c.id === activeId ? 700 : 400 }} onClick={() => { setActiveId(c.id); setSidebarOpen(false); }}>
+                <button className={`chat-item ${c.id === activeId ? "active" : ""}`} style={{ flex: 1 }} onClick={() => { setActiveId(c.id); setSidebarOpen(false); }}>
                   {c.title}
                 </button>
                 <button aria-label={`Rename chat ${c.title}`} onClick={async () => { const name = window.prompt("Rename chat", c.title); if (name && name.trim()) await saveChat({ ...c, title: name.trim().slice(0, 60) }); }}>✎</button>
@@ -437,25 +441,24 @@ export default function Home() {
         <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
           <button className="btn secondary" onClick={() => { setShowSettings(true); setSidebarOpen(false); loadModels(); }}>Settings</button>
           <button className="btn secondary" onClick={() => { setShowOffline(true); setSidebarOpen(false); }}>Offline AI</button>
-          <p style={{ fontSize: 12, color: "var(--muted)" }}>Messages and images sent to cloud providers are processed under those providers’ policies. Product data: Open Food Facts (ODbL). General food information, not medical advice. Always check allergens on the real label.</p>
         </div>
       </aside>
 
       <main className="main">
-        <header ref={headerRef} style={{ display: "flex", gap: 10, alignItems: "center", padding: "10px 14px", borderBottom: "1px solid var(--border)" }}>
+        <header ref={headerRef} className="topbar">
           <button className="btn secondary" aria-label="Open history" aria-expanded={sidebarOpen} onClick={() => setSidebarOpen((v) => !v)}>☰</button>
           <strong>FOODLENS</strong>
-          <span style={{ color: "var(--muted)", fontSize: 13 }}>Chat before you eat unhealthy.</span>
-          <span style={{ color: "var(--muted)", fontSize: 12 }}>General food information, not medical advice. Always check allergens on the real label.</span>
+          <span className="tagline">Chat before you eat unhealthy.</span>
+          <span className="topbar-note" style={{ color: "var(--muted)", fontSize: 12 }}>General food information, not medical advice. Always check allergens on the real label.</span>
         </header>
 
         <div className="chat-scroll" ref={scrollRef} aria-live="polite">
           <div className="chat-col">
             {!active || active.messages.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "48px 0 20px" }}>
+              <div className="hero">
                 <h1>Hello! I&apos;m FOODLENS.</h1>
                 <p style={{ color: "var(--muted)" }}>Ask me anything about food, nutrition, cooking or what&apos;s on your plate.</p>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginTop: 16 }}>
+                <div className="chip-row" style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
                   {CHIPS.map((chip) => (
                     <button key={chip} className="chip" onClick={() => { setInput(chip); }}>{chip}</button>
                   ))}
@@ -514,7 +517,7 @@ export default function Home() {
             )}
             {error && <div className="notice error" role="alert">{error} <button className="btn secondary" onClick={() => setError(null)}>Dismiss</button></div>}
             {settings.provider !== "local" && !keySaved && (
-              <div className="notice warning">No API key is saved for {cap.label} in this browser. Add one in Settings to get real answers — without a key, FOODLENS cannot answer (it will not invent replies). Keys you enter are encrypted in this browser only and must be re-entered after a reload.</div>
+              <div className="notice warning">For the best experience, add any of your API keys in Settings.</div>
             )}
           </div>
         </div>
@@ -560,7 +563,7 @@ export default function Home() {
             <div className="composer-row">
               <button type="button" className="btn secondary" aria-label="Take a photo" onClick={() => cameraRef.current?.click()}>📷 Camera</button>
               <button type="button" className="btn secondary" aria-label="Attach from gallery" onClick={() => fileRef.current?.click()}>🖼 Gallery</button>
-              <button type="button" className="btn secondary" aria-label="Scan barcode" onClick={() => setShowBarcode(true)}>Barcode</button>
+              <button type="button" className="btn secondary" aria-label="Scan barcode" onClick={() => setShowBarcode(true)}>📊 Barcode</button>
               <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
               <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
               <span style={{ flex: 1 }} />
