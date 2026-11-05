@@ -4,6 +4,8 @@ import { clearAllData, clearChats, deleteChat, getKv, listChats, putChat, putKv 
 import { hasStoredApiKey, loadApiKey, removeApiKey, saveApiKey } from "@/lib/crypto";
 import { processImageFile, dataUrlSizeBytes, MAX_IMAGES_PER_MESSAGE } from "@/lib/image";
 import { flagUnverifiedAnalysis } from "@/lib/photo-check";
+import { classifyUserText } from "@/lib/guards";
+import { answerLocally } from "@/lib/local-answers";
 import { checkDigitValid, lookupBarcode, type BarcodeProduct } from "@/lib/barcode";
 import { Markdown } from "@/lib/markdown";
 import { DEFAULT_SETTINGS, PROVIDER_CAPABILITIES, type Chat, type ChatImage, type ChatMessage, type ProviderId, type Settings } from "@/lib/types";
@@ -16,7 +18,7 @@ function newChat(): Chat {
 }
 
 function friendlyError(status: number, fallback: string): string {
-  if (status === 401) return "No API key configured. Add your key in Settings (it is encrypted in this browser only), or set the server environment key for this deployment.";
+  if (status === 401) return "I couldn't answer that from local knowledge. Add an API key in Settings (optional) to unlock full AI answers.";
   if (status === 429) return "The provider is rate-limited. Please wait a moment and try again.";
   if (status === 502) return "The AI provider or local model could not be reached. Check your connection, key and model, then try again.";
   return fallback;
@@ -38,9 +40,9 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showBarcode, setShowBarcode] = useState(false);
-  const [showOffline, setShowOffline] = useState(false);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
   const [keyInput, setKeyInput] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [keySaved, setKeySaved] = useState(false);
@@ -156,6 +158,25 @@ export default function Home() {
       setError("Photos need an online vision provider, or a local Ollama model with vision support. The local text path in this build cannot see photos. Your message was kept — remove the photos or switch provider in Settings.");
       return { sent: false, text: "" };
     }
+    // No-key path: when no API key is saved for this provider, answer
+    // from FOODLENS local knowledge instead of failing outright. The
+    // cloud path with a key is untouched. Photo flows (transcribe /
+    // analyse-confirmed) need vision, so they always use the provider.
+    const savedKey = await loadApiKey(settings.provider);
+    if (settings.provider !== "local" && !savedKey && images.length === 0 && !opts?.mode) {
+      const lastUserText = [...history].reverse().find((m) => m.role === "user")?.text || "";
+      const guard = classifyUserText(lastUserText, false);
+      const localText = guard ? guard.text : answerLocally(lastUserText, { barcodeData: opts?.barcodeData });
+      if (localText) {
+        const doneMsg: ChatMessage = { id: crypto.randomUUID(), role: "assistant", text: localText, createdAt: Date.now(), status: "done", model: "FOODLENS local answers" };
+        const finalChat: Chat = { ...chat, messages: [...history, doneMsg], title: chat.messages.length <= 1 ? (history[0]?.text.slice(0, 48) || "New chat") : chat.title };
+        await saveChat(finalChat);
+        return { sent: true, text: localText, model: "FOODLENS local answers" };
+      }
+      // No local answer for this question: fall through to the cloud
+      // call, which returns the usual "no key" message when no key
+      // exists anywhere.
+    }
     setGenerating(true);
     setThinking(true);
     setStatusLine(settings.searchEnabled ? "Searching the web…" : "");
@@ -168,7 +189,7 @@ export default function Home() {
     let streamed = false;
     let modelUsed: string | undefined;
     try {
-      const apiKey = await loadApiKey(settings.provider);
+      const apiKey = savedKey;
       const res = await fetch("/api/chat", {
         method: "POST",
         signal: controller.signal,
@@ -440,7 +461,6 @@ export default function Home() {
         )}
         <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
           <button className="btn secondary" onClick={() => { setShowSettings(true); setSidebarOpen(false); loadModels(); }}>Settings</button>
-          <button className="btn secondary" onClick={() => { setShowOffline(true); setSidebarOpen(false); }}>Offline AI</button>
         </div>
       </aside>
 
@@ -480,19 +500,30 @@ export default function Home() {
                   {m.status === "streaming" && <span className="cursor" aria-hidden="true" />}
                 </div>
                 <div className="meta">
-                  {m.role === "assistant" && m.model && <span style={{ color: "var(--muted)", fontSize: 12 }}>Answered by {m.model}</span>}
                   <button onClick={() => navigator.clipboard.writeText(m.text).catch(() => undefined)}>Copy</button>
                   {m.role === "assistant" && (
                     <>
-                      <button aria-label="Thumbs up" onClick={async () => {
-                        const updated = { ...active, messages: active.messages.map((x) => (x.id === m.id ? { ...x, feedback: 1 as const } : x)) };
-                        await saveChat(updated);
-                      }}>👍</button>
-                      <button aria-label="Thumbs down" onClick={async () => {
-                        const updated = { ...active, messages: active.messages.map((x) => (x.id === m.id ? { ...x, feedback: -1 as const } : x)) };
-                        await saveChat(updated);
-                      }}>👎</button>
-                      <button onClick={() => { if ("speechSynthesis" in window) { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(m.text)); } }}>Read aloud</button>
+                      <button onClick={async () => {
+                        if (navigator.share) {
+                          try { await navigator.share({ text: m.text }); } catch { /* user cancelled the share sheet */ }
+                        } else {
+                          await navigator.clipboard.writeText(m.text).catch(() => undefined);
+                        }
+                      }}>Share</button>
+                      <button onClick={() => {
+                        if (!("speechSynthesis" in window)) return;
+                        if (speakingId === m.id) {
+                          speechSynthesis.cancel();
+                          setSpeakingId(null);
+                          return;
+                        }
+                        speechSynthesis.cancel();
+                        const utter = new SpeechSynthesisUtterance(m.text.replace(/[*#_`>]/g, ""));
+                        utter.onend = () => setSpeakingId(null);
+                        utter.onerror = () => setSpeakingId(null);
+                        speechSynthesis.speak(utter);
+                        setSpeakingId(m.id);
+                      }}>{speakingId === m.id ? "Stop" : "Listen"}</button>
                       <button onClick={async () => {
                         const idx = active.messages.findIndex((x) => x.id === m.id);
                         const history = active.messages.slice(0, idx);
@@ -516,9 +547,6 @@ export default function Home() {
               <p className="dots" aria-label="FOODLENS is thinking"><span /><span /><span /> {statusLine || "Thinking…"}</p>
             )}
             {error && <div className="notice error" role="alert">{error} <button className="btn secondary" onClick={() => setError(null)}>Dismiss</button></div>}
-            {settings.provider !== "local" && !keySaved && (
-              <div className="notice warning">For the best experience, add any of your API keys in Settings.</div>
-            )}
           </div>
         </div>
 
@@ -561,9 +589,9 @@ export default function Home() {
             <textarea id="composer-input" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask about food, or send a photo…" rows={2}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); (e.target as HTMLTextAreaElement).form?.requestSubmit(); } }} />
             <div className="composer-row">
-              <button type="button" className="btn secondary" aria-label="Take a photo" onClick={() => cameraRef.current?.click()}>📷 Camera</button>
-              <button type="button" className="btn secondary" aria-label="Attach from gallery" onClick={() => fileRef.current?.click()}>🖼 Gallery</button>
-              <button type="button" className="btn secondary" aria-label="Scan barcode" onClick={() => setShowBarcode(true)}>📊 Barcode</button>
+              <button type="button" className="btn secondary" aria-label="Take a photo" onClick={() => cameraRef.current?.click()}>Camera</button>
+              <button type="button" className="btn secondary" aria-label="Attach from gallery" onClick={() => fileRef.current?.click()}>Gallery</button>
+              <button type="button" className="btn secondary" aria-label="Scan barcode" onClick={() => setShowBarcode(true)}>Barcode</button>
               <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
               <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
               <span style={{ flex: 1 }} />
@@ -611,9 +639,10 @@ export default function Home() {
           )}
           {settings.provider !== "local" && (
             <div style={{ marginTop: 10 }}>
-              <label>API key (encrypted in this browser; re-enter after reload)<br />
+              <label>API key (optional)<br />
                 <input type={showKey ? "text" : "password"} value={keyInput} onChange={(e) => setKeyInput(e.target.value)} placeholder={keySaved ? "A key is stored for this session" : "Enter your API key"} autoComplete="off" />
               </label>
+              <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>Optional — adding a key unlocks full AI answers. Without a key, FOODLENS answers from its built-in local knowledge. Keys are encrypted in this browser only and must be re-entered after a reload.</p>
               <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
                 <button type="button" className="btn secondary" onClick={() => setShowKey((v) => !v)}>{showKey ? "Hide" : "Show"}</button>
                 <button type="button" className="btn secondary" onClick={async () => { if (!keyInput.trim()) return; await saveApiKey(settings.provider, keyInput.trim()); setKeySaved(true); setKeyInput(""); }}>Save key</button>
@@ -696,20 +725,6 @@ export default function Home() {
               <p style={{ fontSize: 12, color: "var(--muted)" }}>Source: Open Food Facts, ODbL. Cached locally for 7 days.</p>
             </div>
           )}
-        </dialog>
-      )}
-
-      {showOffline && (
-        <dialog open aria-label="Offline AI" onClose={() => setShowOffline(false)}>
-          <h2>Offline AI</h2>
-          <div className="notice warning">
-            <p><strong>Not ready yet — read this before relying on it.</strong> Offline chat needs a real local model downloaded to this device. No model is bundled, no model has been downloaded by this build, and offline photo understanding is not available unless you run a local vision model (for example via Ollama). A knowledge database is not an AI model. Do not claim offline works until a real installed model has been tested in airplane mode.</p>
-          </div>
-          <p>WebGPU available: {typeof navigator !== "undefined" && "gpu" in navigator ? "Yes" : "No — WebGPU is not available in this browser, so on-device WebLLM models cannot run here."}</p>
-          <p>Device memory (if reported): {(navigator as unknown as { deviceMemory?: number }).deviceMemory ? `${(navigator as unknown as { deviceMemory: number }).deviceMemory} GB` : "Unknown"}. Small models need at least 4 GB free; larger models need 8 GB or more.</p>
-          <p>Minimum hardware: WebGPU-capable browser, 4 GB+ free memory for a small text model, several GB of free storage for the model download. The model download itself is not implemented in this build — the download button below is intentionally absent rather than faked.</p>
-          <p>What does work now without internet: the app shell (cached) and your saved chats in IndexedDB. For local AI today, use the <strong>Local (Ollama / llama.cpp)</strong> provider in Settings with a model running on your own machine.</p>
-          <button type="button" className="btn" onClick={() => setShowOffline(false)}>Close</button>
         </dialog>
       )}
     </div>

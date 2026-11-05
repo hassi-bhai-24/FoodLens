@@ -174,7 +174,7 @@ export async function POST(req: NextRequest) {
   const envName = b.provider === "gemini" ? "GEMINI_API_KEY" : b.provider === "openai" ? "OPENAI_API_KEY" : b.provider === "anthropic" ? "ANTHROPIC_API_KEY" : undefined;
   const apiKey = clientKey || (envName ? envKey(envName) : undefined);
   if (!apiKey) {
-    return jsonError("No API key configured. Add your key in Settings, or set the server environment key for this deployment. Your key is never stored on the server.", 401);
+    return jsonError("I couldn't answer that from local knowledge. Add an API key in Settings (optional) to unlock full AI answers.", 401);
   }
 
   try {

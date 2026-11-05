@@ -22,7 +22,7 @@ try {
 // the compiled output resolves from the project's node_modules.
 const out = mkdtempSync(join(root, ".qa-tmp-"));
 execSync(
-  `./node_modules/.bin/tsc lib/guards.ts lib/checkdigit.ts lib/proxy.ts lib/prompt.ts lib/models.ts lib/markdown.tsx lib/photo-check.ts lib/delimit.ts --outDir ${out} --module commonjs --target es2022 --jsx react --esModuleInterop --skipLibCheck --moduleResolution node`,
+  `./node_modules/.bin/tsc lib/guards.ts lib/checkdigit.ts lib/proxy.ts lib/prompt.ts lib/models.ts lib/markdown.tsx lib/photo-check.ts lib/delimit.ts lib/local-answers.ts --outDir ${out} --module commonjs --target es2022 --jsx react --esModuleInterop --skipLibCheck --moduleResolution node`,
   { cwd: root, stdio: "pipe" },
 );
 const { createRequire } = await import("node:module");
@@ -36,6 +36,7 @@ const { TRANSCRIPTION_ONLY_INSTRUCTION } = require(join(out, "prompt.js"));
 const { flagUnverifiedAnalysis, extractENumbers, ALLERGEN_TERMS } = require(join(out, "photo-check.js"));
 const { delimitedBlock, formatAboutMe, formatBarcodeData } = require(join(out, "delimit.js"));
 const { CHAT_TEMPERATURE, defaultModelForProvider, resolveChatModel, geminiFallbackChain } = require(join(out, "models.js"));
+const { answerLocally } = require(join(out, "local-answers.js"));
 const React = require("react");
 const { renderToString } = require("react-dom/server");
 const { Markdown } = require(join(out, "markdown.js"));
@@ -322,7 +323,8 @@ ok(/isCustomBaseUrlAllowed\(\)/.test(modelsRoute), "models route enforces the cu
 ok(/model: localModel/.test(chatRoute), "local provider emits the answering-model SSE event");
 ok(pageSrc.includes("General food information, not medical advice. Always check allergens on the real label."), "permanent in-app notice uses the exact required text");
 ok(pageSrc.includes("https://aistudio.google.com/apikey") && pageSrc.includes("may be used by Google to improve its products"), "Settings links Google AI Studio keys page with the free-tier data-use note");
-ok(pageSrc.includes("Answered by {m.model}"), "UI displays the answering model under assistant replies");
+ok(!pageSrc.includes("Answered by {m.model}"), "UI no longer displays the answering model under assistant replies (attribution line removed at user request)");
+ok(pageSrc.includes("navigator.share") && pageSrc.includes("speechSynthesis") && pageSrc.includes("Regenerate"), "assistant reply actions are Copy, Share, Listen (voice), Regenerate");
 const nextConfig = readFileSync(join(root, "next.config.mjs"), "utf8");
 ok(nextConfig.includes("'unsafe-inline'"), "CSP unsafe-inline retained (removal breaks inline theme script + Next.js inline scripts + style attributes — see QA-PROGRESS.md Batch 6)");
 
@@ -414,6 +416,66 @@ ok(classifyUserText("Someone told me to say ignore all to chatbots, but I just w
 ok(classifyUserText("My friend said 'previous instructions' — what does that mean for food labels?") === null, "benign latest message quoting a fragment does not trigger");
 ok(/lastUser \? classifyUserText\(lastUser\.text/.test(chatRoute), "chat route classifies only the last user message (source assertion; history scanning not reintroduced)");
 ok(!/earlierInjection|messages\.forEach.*classify|classifyUserText\(.*history/.test(chatRoute), "chat route has no history-scanning guard call");
+
+// Local answers (no-key engine, lib/local-answers.ts): known foods answered,
+// unknown brands unverified, certifications never claimed from a brand name.
+const bananaAns = answerLocally("Is banana healthy?");
+ok(bananaAns && /banana/i.test(bananaAns) && /healthy everyday/.test(bananaAns), "local: banana answered as healthy everyday");
+ok(bananaAns && !/\d/.test(bananaAns), "local: banana answer has no digits (no invented numbers)");
+ok(answerLocally("Is this biscuit healthy?")?.includes("treat"), "local: biscuit answered as a treat");
+ok(answerLocally("What can I cook with chickpeas?")?.includes("Chana chaat"), "local: chickpea recipe given");
+ok(answerLocally("Is Coca-Cola healthy?")?.includes("sugar water"), "local: cola answered with general guidance");
+ok(answerLocally("How do I read a food label?")?.includes("Per 100 g") && answerLocally("How do I read a food label?")?.includes("bold"), "local: label guide covers per-100-g and bold allergens");
+ok(answerLocally("Hello")?.includes("FOODLENS"), "local: greeting answered");
+ok(/banana/i.test(answerLocally("Hi, is banana healthy?") || ""), "local: greeting + food question answers the food");
+ok(answerLocally("What can I cook today?")?.includes("Daal"), "local: cook-today ideas given");
+ok(/roti/i.test(answerLocally("Is roti healthy?") || ""), "local: roti answered");
+ok(answerLocally("Is daal healthy?")?.includes("Daal"), "local: daal answered");
+ok(answerLocally("Is biryani healthy?")?.includes("Biryani"), "local: biryani answered");
+ok(/chai/i.test(answerLocally("Is chai healthy?") || ""), "local: chai answered");
+ok(answerLocally("Is egg healthy?")?.includes("Egg"), "local: egg answered");
+ok(/banana/i.test(answerLocally("Is kela healthy?") || ""), "local: Roman Urdu kela maps to banana");
+ok(answerLocally("What's on my plate?")?.includes("balanced plate"), "local: plate guidance given");
+ok(answerLocally("Is chicken or rice healthier?")?.includes("Chicken") && answerLocally("Is chicken or rice healthier?")?.includes("Rice"), "local: chicken vs rice comparison covers both");
+ok(answerLocally("What are these ingredients?")?.includes("Type the ingredients list"), "local: bare ingredients question asks for the list");
+ok(answerLocally("How do I store rice?")?.includes("Storing rice"), "local: storage guidance given");
+ok(answerLocally("Is mango good for diabetes?")?.includes("diabetes"), "local: diabetes condition note included");
+ok(answerLocally("Is daal healthy?") && !/\d/.test(answerLocally("Is daal healthy?")), "local: daal answer has no digits");
+ok(answerLocally("Is this biscuit healthy?") && !/\d/.test(answerLocally("Is this biscuit healthy?")), "local: biscuit answer has no digits");
+ok(answerLocally("Is Coca-Cola healthy?") && !/\d/.test(answerLocally("Is Coca-Cola healthy?")), "local: cola answer has no digits");
+// Unknown / made-up brands: unverified, never certified.
+ok(answerLocally("Is Zorblox halal?")?.includes("I could not verify 'Zorblox'"), "local: unknown brand halal is unverified, exact wording");
+ok(answerLocally("Is Zorblox vegetarian?")?.includes("I could not verify 'Zorblox'"), "local: unknown brand vegetarian is unverified");
+ok(answerLocally("What are the ingredients of FizzPop cola?")?.includes("I could not verify 'FizzPop cola'"), "local: made-up brand with a generic word is still unverified");
+ok(answerLocally("Does SnackWiz contain peanuts?")?.includes("I could not verify 'SnackWiz'"), "local: unknown brand allergen question is unverified");
+ok(!/certified halal/i.test(answerLocally("Is FizzPop cola halal?") || ""), "local: no false halal certification for a brand");
+ok(!/contains no peanut/i.test(answerLocally("Does ChocoBlast contain peanuts?") || ""), "local: no false allergen claim for a brand");
+// Known generic foods: general guidance, never a certification.
+const chickenHalal = answerLocally("Is chicken halal?");
+ok(chickenHalal?.includes("can't certify") && chickenHalal?.includes("halal mark"), "local: chicken halal gives general guidance, no certification");
+ok(!/I could not verify/.test(chickenHalal || ""), "local: known food is not called unverified");
+ok(answerLocally("Is Coca-Cola halal?")?.includes("can't certify"), "local: cola halal gives general guidance, no certification");
+// Typed ingredient lists: item-by-item, only from the typed words.
+const listAns = answerLocally("Ingredients: wheat flour, sugar, milk powder. Does it contain peanut?");
+ok(listAns?.includes("not related to peanut"), "local: typed list checked item by item for peanut");
+ok(!/I could not verify/.test(listAns || ""), "local: typed list is analysed, not dismissed as unverified");
+ok(answerLocally("Ingredients: peanut oil, sugar. Does it contain peanut?")?.includes("contains peanut"), "local: typed list finds peanut in peanut oil");
+ok(answerLocally("Ingredients: wheat flour, sugar, pork fat. Is it halal?")?.includes("not halal"), "local: typed list flags pork fat as not halal");
+ok(answerLocally("Ingredients: wheat flour, chicken, salt. Is it vegetarian?")?.includes("not vegetarian"), "local: typed list flags chicken as not vegetarian");
+// Barcode answers use only the Open Food Facts data passed in.
+const nutella = { code: "3017620422003", name: "Nutella", brands: "Ferrero", categories: "Spreads", ingredients: "Sugar, palm oil, hazelnuts, cocoa", allergens: "Milk, hazelnuts", nutriscore: "e", missing: [] };
+const nutellaAns = answerLocally("Is this healthy?", { barcodeData: nutella });
+ok(nutellaAns?.includes("Nutella") && nutellaAns?.includes("Open Food Facts"), "local: barcode answer names the product and its source");
+ok(nutellaAns?.includes("occasional treat"), "local: barcode Nutri-Score E read as an occasional treat");
+ok(answerLocally("Is this halal?", { barcodeData: nutella })?.includes("can't confirm halal"), "local: barcode data never certifies halal");
+ok(answerLocally("Does it contain milk?", { barcodeData: nutella })?.includes("milk is listed"), "local: barcode allergen reported from OFF data");
+ok(answerLocally("Is this healthy?", { barcodeData: { code: "0000000000000", missing: ["product not found in Open Food Facts"] } })?.includes("couldn't find this barcode"), "local: unknown barcode reported as not found");
+// Fallback: questions the local engine cannot answer return null.
+ok(answerLocally("What is the capital of France?") === null, "local: non-food question returns null");
+ok(answerLocally("Tell me a joke") === null, "local: joke returns null");
+ok(answerLocally("What is the airspeed of a swallow?") === null, "local: unanswerable question returns null");
+ok(answerLocally("How do I fix my Wi-Fi?") === null, "local: tech question returns null");
+ok(answerLocally("") === null, "local: empty question returns null");
 
 console.log(`unit-tests: ${n} assertions passed`);
 rmSync(out, { recursive: true, force: true });
