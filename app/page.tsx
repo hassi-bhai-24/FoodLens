@@ -1,7 +1,7 @@
 "use client";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { deleteChat, getKv, listChats, putChat, putKv } from "@/lib/db";
-import { hasStoredApiKey, loadApiKey, removeApiKey, saveApiKey } from "@/lib/crypto";
+import { loadApiKey, removeApiKey, saveApiKey } from "@/lib/crypto";
 import { processImageFile, dataUrlSizeBytes, MAX_IMAGES_PER_MESSAGE } from "@/lib/image";
 import { flagUnverifiedAnalysis } from "@/lib/photo-check";
 import { classifyUserText } from "@/lib/guards";
@@ -97,7 +97,11 @@ export default function Home() {
       setChats(loadedChats);
       if (savedSettings) setSettings({ ...DEFAULT_SETTINGS, ...savedSettings });
       setSettingsLoaded(true);
-      setKeySaved(await hasStoredApiKey((savedSettings?.provider || DEFAULT_SETTINGS.provider) as ProviderId));
+      // Verify the key actually loads, not just that a blob exists: a
+      // blob saved before the key vault was made persistent (v4) can
+      // never decrypt, and must not make Settings claim a key is
+      // stored. loadApiKey drops such a stale blob on a failed load.
+      setKeySaved((await loadApiKey((savedSettings?.provider || DEFAULT_SETTINGS.provider) as ProviderId)) !== null);
     } catch {
       setLoadError("Chats and settings could not be loaded from this browser. Your data was not deleted. Try reloading, or use Retry below.");
     }
@@ -284,7 +288,7 @@ export default function Home() {
       setThinking(false);
       setStatusLine("");
       if (!res.ok) {
-        let msg = friendlyError(res.status, "Something went wrong. Your draft was kept — try again.");
+        let msg = friendlyError(res.status, "Something went wrong. Your message is saved in the chat — try again.");
         try { const j = await res.json(); if (j?.error) msg = j.error; } catch { /* keep friendly message */ }
         throw new Error(msg);
       }
@@ -672,7 +676,7 @@ export default function Home() {
         <dialog open aria-label="Settings" onClose={() => setShowSettings(false)}>
           <h2>Settings</h2>
           <label>Provider<br />
-            <select value={settings.provider} onChange={async (e) => { const p = e.target.value as ProviderId; setSettings((s) => ({ ...s, provider: p })); setKeyInput(""); setKeySaved(await hasStoredApiKey(p)); }}>
+            <select value={settings.provider} onChange={async (e) => { const p = e.target.value as ProviderId; setSettings((s) => ({ ...s, provider: p })); setKeyInput(""); setKeySaved((await loadApiKey(p)) !== null); }}>
               {PROVIDER_CAPABILITIES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
             </select>
           </label>
@@ -684,8 +688,8 @@ export default function Home() {
               <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>Optional — adding a key unlocks full AI answers. Without a key, FOODLENS answers from its built-in local knowledge. Keys are encrypted and stored in this browser only.</p>
               <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
                 <button type="button" className="btn secondary" onClick={() => setShowKey((v) => !v)}>{showKey ? "Hide" : "Show"}</button>
-                <button type="button" className="btn secondary" onClick={async () => { if (!keyInput.trim()) return; await saveApiKey(settings.provider, keyInput.trim()); setKeySaved(true); setKeyInput(""); }}>Save key</button>
-                <button type="button" className="btn secondary" onClick={async () => { await removeApiKey(settings.provider); setKeySaved(false); }}>Remove key</button>
+                <button type="button" className="btn secondary" onClick={async () => { if (!keyInput.trim()) return; try { await saveApiKey(settings.provider, keyInput.trim()); setKeySaved(true); setKeyInput(""); setTestStatus(""); } catch { setTestStatus("Could not save the key in this browser. Check that storage is allowed, then try again."); } }}>Save key</button>
+                <button type="button" className="btn secondary" onClick={async () => { try { await removeApiKey(settings.provider); } catch { /* key is gone or storage failed; still show no key */ } setKeySaved(false); setTestStatus(""); }}>Remove key</button>
                 <button type="button" className="btn secondary" onClick={testConnection}>Test connection</button>
               </div>
               {testStatus && <p>{testStatus}</p>}

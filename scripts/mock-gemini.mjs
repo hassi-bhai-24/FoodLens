@@ -7,7 +7,7 @@
 //
 // Usage:
 //   node scripts/mock-gemini.mjs --port 4101 --mode fallback-404 \
-//     --fail-model gemini-3.5-flash --capture-file /tmp/gemini-capture.jsonl
+//     --fail-model gemini-3.8-flash --capture-file /tmp/gemini-capture.jsonl
 // Modes:
 //   fallback-404  404 (Google-style NOT_FOUND body) for --fail-model,
 //                 200 SSE reply for every other model.
@@ -23,7 +23,7 @@ function argValue(name, fallback) {
 }
 const port = Number(argValue("--port", "4101"));
 const mode = argValue("--mode", "success");
-const failModel = argValue("--fail-model", "gemini-3.5-flash");
+const failModel = argValue("--fail-model", "gemini-3.8-flash");
 const captureFile = argValue("--capture-file", "/tmp/mock-gemini-capture.jsonl");
 if (!["fallback-404", "quota-429", "success"].includes(mode)) {
   console.error(`mock-gemini: unknown mode ${mode}`);

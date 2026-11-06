@@ -5,16 +5,27 @@
 
 export const CHAT_TEMPERATURE = 0.3;
 
-export const GEMINI_DEFAULT_MODEL = "gemini-3.5-flash";
-export const OPENAI_DEFAULT_MODEL = "gpt-4o-mini";
-export const ANTHROPIC_DEFAULT_MODEL = "claude-sonnet-4-5";
+export const GEMINI_DEFAULT_MODEL = "gemini-3.8-flash";
+export const OPENAI_DEFAULT_MODEL = "gpt-6-luna";
+export const ANTHROPIC_DEFAULT_MODEL = "claude-sonnet-5-5";
 export const LOCAL_DEFAULT_MODEL = "llama3.1";
 
 // Gemini models tried, in order, when the primary model returns a
 // model-not-found (404) error. Quota/429 errors never fall back.
+//
+// Defaults verified 2026-11-06 against the providers' own published
+// lists: Google's models page lists gemini-3.8-flash as the current
+// Flash model and gemini-3.6-flash / gemini-3.5-flash-lite as stable;
+// the old default gemini-3.5-flash is a deprecated alias (Google routes
+// it to gemini-3.6-flash) and is no longer in the current list, and
+// gemini-flash-latest is not a published model ID. OpenAI's own
+// deprecations page shuts gpt-4o-mini down on 2027-01-14 and names
+// gpt-6-luna as the replacement. Anthropic's models overview lists
+// Claude Sonnet 5.5 as the current Sonnet; Sonnet 4.5 retires
+// 2026-11-30 with claude-sonnet-5-5 as the replacement.
 export const GEMINI_FALLBACK_MODELS: readonly string[] = [
+  "gemini-3.6-flash",
   "gemini-3.5-flash-lite",
-  "gemini-flash-latest",
 ];
 
 export type ChatProvider = "gemini" | "openai" | "anthropic" | "compatible" | "local";

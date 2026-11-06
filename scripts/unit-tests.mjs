@@ -30,7 +30,7 @@ const require = createRequire(join(root, "package.json"));
 const { classifyUserText } = require(join(out, "guards.js"));
 const { isExtremeWeightLoss } = require(join(out, "guards.js"));
 const { checkDigitValid } = require(join(out, "checkdigit.js"));
-const { isSafeHttpsUrl, isQuotaError, isModelNotFoundError, mapProviderError, clientRateLimitKey, isCustomBaseUrlAllowed, resolveTestOnlyBaseUrl, resolveGeminiBaseUrl, resolveOpenFoodFactsBaseUrl } = require(join(out, "proxy.js"));
+const { isSafeHttpsUrl, isQuotaError, isModelNotFoundError, isInvalidKeyError, mapProviderError, clientRateLimitKey, isCustomBaseUrlAllowed, resolveTestOnlyBaseUrl, resolveGeminiBaseUrl, resolveOpenFoodFactsBaseUrl } = require(join(out, "proxy.js"));
 const { FOODLENS_SYSTEM_PROMPT } = require(join(out, "prompt.js"));
 const { TRANSCRIPTION_ONLY_INSTRUCTION } = require(join(out, "prompt.js"));
 const { flagUnverifiedAnalysis, extractENumbers, ALLERGEN_TERMS } = require(join(out, "photo-check.js"));
@@ -162,16 +162,41 @@ ok(quota.status === 429 && /usage limit|wait/i.test(quota.message), "quota maps 
 const notFound = mapProviderError(404, "");
 ok(notFound.status === 502 && /not available/i.test(notFound.message), "model-not-found maps to friendly 502");
 ok(mapProviderError(500, "").status === 502, "other provider errors map to 502");
+// v5: a rejected API key must be told apart from a bad model and from
+// quota — before this fix all three produced the same generic 502, so
+// the user could not tell which one to fix. Gemini rejects a bad key
+// with HTTP 400 + API_KEY_INVALID; OpenAI/Anthropic with HTTP 401.
+ok(isInvalidKeyError(400, '{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT","details":[{"reason":"API_KEY_INVALID"}]}}'), "Gemini bad key (400 API_KEY_INVALID) is an invalid-key error");
+ok(isInvalidKeyError(401, ""), "HTTP 401 is an invalid-key error");
+ok(isInvalidKeyError(401, "Incorrect API key provided"), "OpenAI bad key (401) is an invalid-key error");
+ok(isInvalidKeyError(401, '{"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"}}'), "Anthropic bad key (401) is an invalid-key error");
+ok(isInvalidKeyError(403, "PERMISSION_DENIED: The caller does not have permission"), "Gemini 403 PERMISSION_DENIED is an invalid-key error");
+ok(!isInvalidKeyError(404, "models/foo is not found"), "model-not-found is not an invalid-key error");
+ok(!isInvalidKeyError(429, "quota exceeded"), "quota is not an invalid-key error");
+ok(!isInvalidKeyError(500, "internal error"), "HTTP 500 is not an invalid-key error");
+const badKey = mapProviderError(400, "API_KEY_INVALID");
+ok(badKey.status === 401 && /rejected this API key/i.test(badKey.message), "bad key maps to distinct 401 with its own message");
+ok(mapProviderError(401, "Incorrect API key provided").status === 401, "OpenAI bad key maps to 401");
+ok(/rejected this API key/i.test(mapProviderError(400, "API_KEY_INVALID").message) && !/not available/i.test(mapProviderError(400, "API_KEY_INVALID").message), "bad-key message does not blame the model");
 
 // Model defaults, env config and Gemini fallback chain (lib/models.ts)
+// v5: defaults are the providers' current models, verified 2026-11-06
+// against their own published lists. gemini-3.5-flash was a deprecated
+// alias (Google routes it to gemini-3.6-flash), gpt-4o-mini shuts down
+// 2027-01-14 (OpenAI names gpt-6-luna), and claude-sonnet-4-5 retires
+// 2026-11-30 (Anthropic names claude-sonnet-5-5). gemini-flash-latest
+// is not a published model ID and is no longer a fallback.
 ok(CHAT_TEMPERATURE === 0.3, "chat temperature is 0.3");
-ok(defaultModelForProvider("gemini", {}) === "gemini-3.5-flash", "Gemini built-in default");
+ok(defaultModelForProvider("gemini", {}) === "gemini-3.8-flash", "Gemini built-in default is the current Flash model");
+ok(defaultModelForProvider("openai", {}) === "gpt-6-luna", "OpenAI built-in default is the current replacement model");
+ok(defaultModelForProvider("anthropic", {}) === "claude-sonnet-5-5", "Anthropic built-in default is the current Sonnet model");
 ok(defaultModelForProvider("gemini", { FOODLENS_GEMINI_MODEL: "gemini-custom" }) === "gemini-custom", "env default model wins over built-in");
 ok(defaultModelForProvider("gemini", { GEMINI_MODEL: "gemini-env" }) === "gemini-env", "GEMINI_MODEL env alias works");
 ok(resolveChatModel("gemini", "user-model", { FOODLENS_GEMINI_MODEL: "env-model" }) === "user-model", "user-chosen model takes precedence");
-ok(resolveChatModel("openai", "", {}) === "gpt-4o-mini", "OpenAI built-in default");
-const chain = geminiFallbackChain("gemini-3.5-flash");
-ok(JSON.stringify(chain) === JSON.stringify(["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"]), "Gemini fallback chain order");
+ok(resolveChatModel("openai", "", {}) === "gpt-6-luna", "OpenAI built-in default");
+const chain = geminiFallbackChain("gemini-3.8-flash");
+ok(JSON.stringify(chain) === JSON.stringify(["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"]), "Gemini fallback chain order (current models only)");
+ok(!chain.includes("gemini-3.5-flash") && !chain.includes("gemini-flash-latest"), "fallback chain has no deprecated alias or unpublished model ID");
 ok(geminiFallbackChain("gemini-3.5-flash-lite")[0] === "gemini-3.5-flash-lite" && geminiFallbackChain("gemini-3.5-flash-lite").length === 2, "fallback chain de-duplicates the primary");
 
 // Single prompt source: lib/prompt.ts and the generated .md must match,
@@ -705,7 +730,7 @@ ok(!(await hasStoredApiKey("anthropic")), "v4: undecryptable blob is dropped");
 await putKv("settings", { provider: "openai", model: "", customBaseUrl: "", searchEnabled: false, theme: "system", aboutMe: "", offlineModel: "" });
 const savedSettings = await getKv("settings");
 ok(savedSettings?.provider === "openai" && savedSettings?.model === "", "v4: settings round-trip through storage");
-ok(resolveChatModel("gemini", "", {}) === "gemini-3.5-flash", "v4: empty model falls back to the provider default");
+ok(resolveChatModel("gemini", "", {}) === "gemini-3.8-flash", "v4: empty model falls back to the provider default");
 
 console.log(`unit-tests: ${n} assertions passed`);
 rmSync(out, { recursive: true, force: true });

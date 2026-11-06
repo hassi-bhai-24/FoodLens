@@ -158,6 +158,21 @@ export function isModelNotFoundError(status: number, bodyText = ""): boolean {
   return /model .*not (found|available)|not available to|model_not_found/i.test(bodyText);
 }
 
+/**
+ * True when an upstream failure means the API key itself was rejected
+ * (wrong key, revoked key, or the provider API not enabled for the
+ * key's project) — NOT a bad model and NOT quota. Gemini rejects a bad
+ * key with HTTP 400 + API_KEY_INVALID; OpenAI and Anthropic reject one
+ * with HTTP 401. A 403 PERMISSION_DENIED from Gemini also means the
+ * key/project cannot use the API. Detecting this separately matters:
+ * without it a bad key produced the same generic message as a bad
+ * model, so the user could not tell which one to fix.
+ */
+export function isInvalidKeyError(status: number, bodyText = ""): boolean {
+  if (status === 401) return true;
+  return /API_KEY_INVALID|API key not valid|incorrect API key|invalid x-api-key|invalid api key|authentication_error|PERMISSION_DENIED|API keys are not supported|api key (expired|revoked|disabled)/i.test(bodyText);
+}
+
 export interface ProviderErrorMapping {
   status: number;
   message: string;
@@ -165,8 +180,9 @@ export interface ProviderErrorMapping {
 
 /**
  * Map an upstream provider failure to the status/message the client
- * sees. Quota failures keep HTTP 429 with a friendly, actionable
- * message instead of a generic 502; everything else is a 502.
+ * sees. Each cause gets its own message so the user can tell a bad key
+ * from a bad model from quota: invalid key keeps HTTP 401, quota
+ * failures keep HTTP 429, everything else is a 502.
  */
 export function mapProviderError(status: number, bodyText = ""): ProviderErrorMapping {
   if (isQuotaError(status, bodyText)) {
@@ -174,6 +190,13 @@ export function mapProviderError(status: number, bodyText = ""): ProviderErrorMa
       status: 429,
       message:
         "The AI provider's usage limit has been reached for this key or model. Please wait a little while and try again, or try a different model or key in Settings. No fallback model was tried for a quota error.",
+    };
+  }
+  if (isInvalidKeyError(status, bodyText)) {
+    return {
+      status: 401,
+      message:
+        "The AI provider rejected this API key. Check that the key is copied exactly in Settings, and that the provider's API is enabled for the account the key belongs to. The model was not the problem.",
     };
   }
   if (isModelNotFoundError(status, bodyText)) {
