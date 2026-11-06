@@ -1,6 +1,6 @@
 "use client";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { clearAllData, clearChats, deleteChat, getKv, listChats, putChat, putKv } from "@/lib/db";
+import { deleteChat, getKv, listChats, putChat, putKv } from "@/lib/db";
 import { hasStoredApiKey, loadApiKey, removeApiKey, saveApiKey } from "@/lib/crypto";
 import { processImageFile, dataUrlSizeBytes, MAX_IMAGES_PER_MESSAGE } from "@/lib/image";
 import { flagUnverifiedAnalysis } from "@/lib/photo-check";
@@ -46,7 +46,6 @@ export default function Home() {
   const [keyInput, setKeyInput] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [keySaved, setKeySaved] = useState(false);
-  const [models, setModels] = useState<string[]>([]);
   const [testStatus, setTestStatus] = useState("");
   const [barcodeCode, setBarcodeCode] = useState("");
   const [barcodeResult, setBarcodeResult] = useState<BarcodeProduct | null>(null);
@@ -168,7 +167,8 @@ export default function Home() {
   }, [active]);
 
   // Returns true when a reply (full or partial) was saved, false when
-  // nothing was sent — callers restore the user's draft in that case.
+  // nothing was sent. The prompt bar is never restored on failure —
+  // the message is already in the chat history.
   async function streamReply(chat: Chat, history: ChatMessage[], opts?: { mode?: "transcribe" | "analyse-confirmed"; confirmedIngredients?: string; barcodeData?: BarcodeProduct }): Promise<{ sent: boolean; text: string; model?: string }> {
     const cap = PROVIDER_CAPABILITIES.find((p) => p.id === settings.provider)!;
     // In analyse-confirmed mode the route strips image parts, so the
@@ -216,7 +216,7 @@ export default function Home() {
         let shown = "";
         let partIdx = 0;
         let typingTicks = 0;
-        const TYPING_TICKS = 20; // 20 x 35ms ≈ 0.7s of typing dots
+        const TYPING_TICKS = 34; // 34 x 35ms ≈ 1.2s of typing dots
         await new Promise<void>((resolve) => {
           localResolveRef.current = resolve;
           const tick = () => {
@@ -347,7 +347,6 @@ export default function Home() {
     if (generating) return;
     setError(null);
     const chat = baseChat ?? ensureChat();
-    const draftText = content;
     const draftAttachments = attachments;
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: "user", text: content || "(photo attached)", images: attachments.length ? [...attachments] : undefined, createdAt: Date.now(), status: "done" };
     const history = [...(baseHistory ?? chat.messages), userMsg];
@@ -366,12 +365,10 @@ export default function Home() {
       setPendingConfirm({ chatId: chat.id, transcription: result.text, question: content });
       setConfirmDraft(result.text);
     }
-    if (!result.sent) {
-      // Nothing reached the provider: restore the draft so the user
-      // does not lose what they typed or attached.
-      setInput(draftText);
-      setAttachments(draftAttachments);
-    }
+    // The prompt bar stays cleared even when the reply failed: the
+    // user's message (text and any photos) is already saved in the chat
+    // history, and the error text explains the failed reply. Restoring
+    // the draft here used to leave the prompt sitting in the bar.
   }
 
   // Step 2 of the photo flow: only the confirmed text is analysed.
@@ -436,20 +433,6 @@ export default function Home() {
       setTestStatus("Connection OK — the provider responded.");
     } catch {
       setTestStatus("Failed: could not reach the provider. Check your connection, key and model.");
-    }
-  }
-
-  async function loadModels() {
-    try {
-      const apiKey = await loadApiKey(settings.provider);
-      // Key travels in a header, never in the URL (URLs are logged and
-      // kept in browser history). The server also accepts the env key.
-      const params = new URLSearchParams({ provider: settings.provider, baseUrl: settings.customBaseUrl });
-      const res = await fetch(`/api/models?${params}`, { headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {} });
-      const j = await res.json();
-      setModels(Array.isArray(j.models) ? j.models : []);
-    } catch {
-      setModels([]);
     }
   }
 
@@ -534,7 +517,7 @@ export default function Home() {
           </ul>
         )}
         <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
-          <button className="btn secondary" onClick={() => { setShowSettings(true); if (window.innerWidth <= 720) setSidebarOpen(false); loadModels(); }}>Settings</button>
+          <button className="btn secondary" onClick={() => { setShowSettings(true); if (window.innerWidth <= 720) setSidebarOpen(false); }}>Settings</button>
         </div>
       </aside>
 
@@ -689,37 +672,16 @@ export default function Home() {
         <dialog open aria-label="Settings" onClose={() => setShowSettings(false)}>
           <h2>Settings</h2>
           <label>Provider<br />
-            <select value={settings.provider} onChange={(e) => { const p = e.target.value as ProviderId; setSettings((s) => ({ ...s, provider: p, model: "" })); setKeySaved(false); }}>
+            <select value={settings.provider} onChange={async (e) => { const p = e.target.value as ProviderId; setSettings((s) => ({ ...s, provider: p })); setKeyInput(""); setKeySaved(await hasStoredApiKey(p)); }}>
               {PROVIDER_CAPABILITIES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
             </select>
           </label>
-          <label style={{ display: "block", marginTop: 10 }}>Model (fetched dynamically where the provider supports it)<br />
-            {models.length > 0 ? (
-              <select value={settings.model} onChange={(e) => setSettings((s) => ({ ...s, model: e.target.value }))}>
-                <option value="">Choose a model…</option>
-                {models.map((m) => <option key={m} value={m}>{m}</option>)}
-              </select>
-            ) : (
-              <input type="text" value={settings.model} placeholder="e.g. type a model name" onChange={(e) => setSettings((s) => ({ ...s, model: e.target.value }))} />
-            )}
-            <button type="button" className="btn secondary" onClick={loadModels}>Refresh models</button>
-          </label>
-          {settings.provider === "compatible" && (
-            <label style={{ display: "block", marginTop: 10 }}>Custom base URL (https, public addresses only)<br />
-              <input type="text" value={settings.customBaseUrl} onChange={(e) => setSettings((s) => ({ ...s, customBaseUrl: e.target.value }))} placeholder="https://example.com/v1" />
-            </label>
-          )}
-          {settings.provider === "local" && (
-            <label style={{ display: "block", marginTop: 10 }}>Local endpoint<br />
-              <input type="text" value={settings.customBaseUrl} onChange={(e) => setSettings((s) => ({ ...s, customBaseUrl: e.target.value }))} placeholder="http://localhost:11434" />
-            </label>
-          )}
           {settings.provider !== "local" && (
             <div style={{ marginTop: 10 }}>
               <label>API key (optional)<br />
-                <input type={showKey ? "text" : "password"} value={keyInput} onChange={(e) => setKeyInput(e.target.value)} placeholder={keySaved ? "A key is stored for this session" : "Enter your API key"} autoComplete="off" />
+                <input type={showKey ? "text" : "password"} value={keyInput} onChange={(e) => setKeyInput(e.target.value)} placeholder={keySaved ? "A key is stored" : "Enter your API key"} autoComplete="off" />
               </label>
-              <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>Optional — adding a key unlocks full AI answers. Without a key, FOODLENS answers from its built-in local knowledge. Keys are encrypted in this browser only and must be re-entered after a reload.</p>
+              <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>Optional — adding a key unlocks full AI answers. Without a key, FOODLENS answers from its built-in local knowledge. Keys are encrypted and stored in this browser only.</p>
               <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
                 <button type="button" className="btn secondary" onClick={() => setShowKey((v) => !v)}>{showKey ? "Hide" : "Show"}</button>
                 <button type="button" className="btn secondary" onClick={async () => { if (!keyInput.trim()) return; await saveApiKey(settings.provider, keyInput.trim()); setKeySaved(true); setKeyInput(""); }}>Save key</button>
@@ -727,49 +689,9 @@ export default function Home() {
                 <button type="button" className="btn secondary" onClick={testConnection}>Test connection</button>
               </div>
               {testStatus && <p>{testStatus}</p>}
-              {settings.provider === "gemini" && (
-                <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 8 }}>
-                  No key yet? Get a free Gemini key in Google AI Studio: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">aistudio.google.com/apikey</a> — sign in with a Google account and choose “Create API key”. On Google’s free tier, your prompts and responses may be used by Google to improve its products; please check Google’s terms before sending anything sensitive. The free tier also has rate limits.
-                </p>
-              )}
             </div>
           )}
-          <label style={{ display: "block", marginTop: 10 }}>Theme<br />
-            <select value={settings.theme} onChange={(e) => setSettings((s) => ({ ...s, theme: e.target.value as Settings["theme"] }))}>
-              <option value="system">System</option><option value="dark">Dark</option><option value="light">Light</option>
-            </select>
-          </label>
-          <label style={{ display: "block", marginTop: 10 }}>
-            <input type="checkbox" checked={settings.searchEnabled} onChange={(e) => setSettings((s) => ({ ...s, searchEnabled: e.target.checked }))} /> Web search (Gemini and OpenAI only; ignored by Claude, compatible and local providers — off by default; only when current information is needed, with sources)
-          </label>
-          <label style={{ display: "block", marginTop: 10 }}>About me (optional: allergies, diet, halal, age — used as context, editable and deletable)<br />
-            <textarea value={settings.aboutMe} onChange={(e) => setSettings((s) => ({ ...s, aboutMe: e.target.value }))} rows={3} />
-          </label>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
-            <button type="button" className="btn secondary" onClick={async () => {
-              const blob = new Blob([JSON.stringify(chats, null, 2)], { type: "application/json" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a"); a.href = url; a.download = "foodlens-chats.json"; a.click(); URL.revokeObjectURL(url);
-            }}>Export chats (JSON, text only — photos are not included)</button>
-            <label className="btn secondary">Import chats<input type="file" accept="application/json" hidden onChange={async (e) => {
-              const f = e.target.files?.[0]; if (!f) return;
-              try {
-                const parsed = JSON.parse(await f.text()) as unknown;
-                // Validate shape: only FOODLENS chat objects are imported;
-                // anything else is rejected instead of corrupting IndexedDB.
-                const isValidChat = (c: unknown): c is Chat => {
-                  if (!c || typeof c !== "object") return false;
-                  const o = c as Record<string, unknown>;
-                  return typeof o.id === "string" && typeof o.title === "string" && Array.isArray(o.messages) && o.messages.every((m: unknown) => m && typeof m === "object" && ["user", "assistant"].includes((m as Record<string, unknown>).role as string) && typeof (m as Record<string, unknown>).text === "string");
-                };
-                const list = Array.isArray(parsed) ? parsed.filter(isValidChat) : [];
-                if (list.length === 0) { setError("That file contains no valid FOODLENS chats to import."); return; }
-                for (const c of list) await putChat(c);
-                await loadAll();
-              } catch { setError("That file could not be imported as FOODLENS chats."); }
-            }} /></label>
-            <button type="button" className="btn secondary" onClick={async () => { if (confirm("Delete all chats? This cannot be undone.")) { await clearChats(); setChats([]); setActiveId(null); } }}>Delete all chats</button>
-            <button type="button" className="btn secondary" onClick={async () => { if (confirm("Clear all app data, including settings and saved keys?")) { await clearAllData(); for (const p of PROVIDER_CAPABILITIES) { if (p.id !== "local") await removeApiKey(p.id).catch(() => undefined); } setChats([]); setSettings(DEFAULT_SETTINGS); setKeySaved(false); } }}>Clear app data</button>
             <button type="button" className="btn" onClick={() => setShowSettings(false)}>Done</button>
           </div>
         </dialog>

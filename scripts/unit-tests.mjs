@@ -22,7 +22,7 @@ try {
 // the compiled output resolves from the project's node_modules.
 const out = mkdtempSync(join(root, ".qa-tmp-"));
 execSync(
-  `./node_modules/.bin/tsc lib/guards.ts lib/checkdigit.ts lib/proxy.ts lib/prompt.ts lib/models.ts lib/markdown.tsx lib/photo-check.ts lib/delimit.ts lib/local-answers.ts --outDir ${out} --module commonjs --target es2022 --jsx react --esModuleInterop --skipLibCheck --moduleResolution node`,
+  `./node_modules/.bin/tsc lib/guards.ts lib/checkdigit.ts lib/proxy.ts lib/prompt.ts lib/models.ts lib/markdown.tsx lib/photo-check.ts lib/delimit.ts lib/local-answers.ts lib/crypto.ts lib/db.ts --outDir ${out} --module commonjs --target es2022 --jsx react --esModuleInterop --skipLibCheck --moduleResolution node`,
   { cwd: root, stdio: "pipe" },
 );
 const { createRequire } = await import("node:module");
@@ -40,6 +40,74 @@ const { answerLocally } = require(join(out, "local-answers.js"));
 const React = require("react");
 const { renderToString } = require("react-dom/server");
 const { Markdown } = require(join(out, "markdown.js"));
+
+// Minimal in-memory IndexedDB stand-in, just enough for lib/db.ts:
+// open() with onupgradeneeded/onsuccess, object stores with
+// get/put/delete/clear/getAll, and transactions with oncomplete.
+// All callbacks fire asynchronously, as in a real browser.
+{
+  const stores = new Map(); // store name -> Map(key, value)
+  const makeStore = (name) => ({
+    get(key) {
+      const req = { result: stores.get(name)?.get(key), onsuccess: null, onerror: null };
+      setTimeout(() => req.onsuccess?.(), 0);
+      return req;
+    },
+    put(value) {
+      const req = { result: undefined, onsuccess: null, onerror: null };
+      const key = value?.key ?? value?.id ?? value?.code;
+      if (!stores.has(name)) stores.set(name, new Map());
+      stores.get(name).set(key, value);
+      setTimeout(() => { req.onsuccess?.(); }, 0);
+      return req;
+    },
+    delete(key) {
+      const req = { result: undefined, onsuccess: null, onerror: null };
+      stores.get(name)?.delete(key);
+      setTimeout(() => { req.onsuccess?.(); }, 0);
+      return req;
+    },
+    clear() {
+      const req = { result: undefined, onsuccess: null, onerror: null };
+      stores.get(name)?.clear();
+      setTimeout(() => { req.onsuccess?.(); }, 0);
+      return req;
+    },
+    getAll() {
+      const req = { result: [...(stores.get(name)?.values() ?? [])], onsuccess: null, onerror: null };
+      setTimeout(() => req.onsuccess?.(), 0);
+      return req;
+    },
+  });
+  const makeTx = (names) => {
+    const tx = {
+      oncomplete: null, onerror: null, onabort: null,
+      objectStore: (n) => {
+        if (!stores.has(n)) throw new Error(`no such store: ${n}`);
+        const s = makeStore(n);
+        // Fire the transaction's oncomplete after each request settles.
+        const wrap = (m) => (...a) => { const r = s[m](...a); setTimeout(() => tx.oncomplete?.(), 0); return r; };
+        return { get: wrap("get"), put: wrap("put"), delete: wrap("delete"), clear: wrap("clear"), getAll: wrap("getAll") };
+      },
+    };
+    return tx;
+  };
+  globalThis.indexedDB = {
+    open(_name, _version) {
+      const req = { result: null, onsuccess: null, onerror: null, onupgradeneeded: null };
+      const db = {
+        objectStoreNames: { contains: (n) => stores.has(n) },
+        createObjectStore: (n) => { if (!stores.has(n)) stores.set(n, new Map()); },
+        transaction: (names) => makeTx(names),
+      };
+      req.result = db;
+      setTimeout(() => { req.onupgradeneeded?.(); req.onsuccess?.(); }, 0);
+      return req;
+    },
+  };
+}
+const { saveApiKey, loadApiKey, removeApiKey, hasStoredApiKey, __resetWrappingKeyForTests } = require(join(out, "crypto.js"));
+const { putKv, getKv } = require(join(out, "db.js"));
 
 let n = 0;
 function ok(cond, label) {
@@ -322,7 +390,9 @@ const modelsRoute = readFileSync(join(root, "app", "api", "models", "route.ts"),
 ok(/isCustomBaseUrlAllowed\(\)/.test(modelsRoute), "models route enforces the custom-base-URL flag");
 ok(/model: localModel/.test(chatRoute), "local provider emits the answering-model SSE event");
 ok(pageSrc.includes("General food information, not medical advice. Always check allergens on the real label."), "permanent in-app notice uses the exact required text");
-ok(pageSrc.includes("https://aistudio.google.com/apikey") && pageSrc.includes("may be used by Google to improve its products"), "Settings links Google AI Studio keys page with the free-tier data-use note");
+ok(!pageSrc.includes("https://aistudio.google.com/apikey"), "v4: Settings no longer links the Google AI Studio keys page (removed at user request)");
+ok(!pageSrc.includes("Refresh models") && !pageSrc.includes("Custom base URL") && !pageSrc.includes("About me (optional") && !pageSrc.includes("Export chats (JSON") && !pageSrc.includes("Delete all chats?") && !pageSrc.includes("Clear app data") && !pageSrc.includes("Web search (Gemini and OpenAI only"), "v4: Settings has no model picker, base URL, theme, web search, About me, export/import or delete/clear controls");
+ok(pageSrc.includes("API key (optional)") && pageSrc.includes("Save key") && pageSrc.includes("Remove key") && pageSrc.includes("Test connection"), "v4: Settings keeps provider + API key controls");
 ok(!pageSrc.includes("Answered by {m.model}"), "UI no longer displays the answering model under assistant replies (attribution line removed at user request)");
 ok(pageSrc.includes("navigator.share") && pageSrc.includes("speechSynthesis") && pageSrc.includes("Regenerate"), "assistant reply actions are Copy, Share, Listen (voice), Regenerate");
 const nextConfig = readFileSync(join(root, "next.config.mjs"), "utf8");
@@ -605,6 +675,37 @@ ok(answerLocally("Tell me a joke") === null, "local: joke returns null");
 ok(answerLocally("What is the airspeed of a swallow?") === null, "local: unanswerable question returns null");
 ok(answerLocally("How do I fix my Wi-Fi?") === null, "local: tech question returns null");
 ok(answerLocally("") === null, "local: empty question returns null");
+
+// v4: a saved API key survives a fresh session (page reload). The
+// reset hook drops the in-memory wrapping key, so the next load must
+// go through the stored JWK — exactly the post-reload path.
+await saveApiKey("gemini", "test-key-abc123");
+ok(await hasStoredApiKey("gemini"), "v4: key blob exists after save");
+__resetWrappingKeyForTests();
+ok((await loadApiKey("gemini")) === "test-key-abc123", "v4: saved key loads after a fresh session");
+await saveApiKey("openai", "test-key-xyz");
+__resetWrappingKeyForTests();
+ok((await loadApiKey("openai")) === "test-key-xyz", "v4: per-provider keys survive a fresh session");
+ok((await loadApiKey("gemini")) === "test-key-abc123", "v4: other provider key untouched by a second save");
+await removeApiKey("gemini");
+__resetWrappingKeyForTests();
+ok((await loadApiKey("gemini")) === null, "v4: removed key loads as null");
+ok(!(await hasStoredApiKey("gemini")), "v4: removed key is gone");
+// A blob encrypted under a wrapping key that no longer exists can
+// never decrypt: it loads as null and is dropped, so Settings stops
+// claiming a key is stored. Simulate it by swapping the stored wrap JWK.
+await saveApiKey("anthropic", "stale-key");
+const freshWrap = await crypto.subtle.exportKey("jwk", await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]));
+await putKv("apiKey:wrap", freshWrap);
+__resetWrappingKeyForTests();
+ok((await loadApiKey("anthropic")) === null, "v4: blob under a lost wrapping key loads as null");
+ok(!(await hasStoredApiKey("anthropic")), "v4: undecryptable blob is dropped");
+// v4: the simplified Settings (provider + key only) still loads and
+// saves settings, and an empty model still falls back to the default.
+await putKv("settings", { provider: "openai", model: "", customBaseUrl: "", searchEnabled: false, theme: "system", aboutMe: "", offlineModel: "" });
+const savedSettings = await getKv("settings");
+ok(savedSettings?.provider === "openai" && savedSettings?.model === "", "v4: settings round-trip through storage");
+ok(resolveChatModel("gemini", "", {}) === "gemini-3.5-flash", "v4: empty model falls back to the provider default");
 
 console.log(`unit-tests: ${n} assertions passed`);
 rmSync(out, { recursive: true, force: true });
