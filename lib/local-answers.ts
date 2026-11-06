@@ -325,10 +325,10 @@ FOODS.push(
     cons: ["refined flour, easy to overeat"],
     tip: "A modest portion with vegetables and a light sauce." },
   { names: ["noodles", "instant noodles", "maggi"], display: "Noodles", verdict: "sometimes",
-    blurb: "Instant noodles are quick but usually high in salt and low in nutrients.",
-    pros: ["quick and cheap"],
-    cons: ["very salty, low fibre"],
-    tip: "Add vegetables and an egg to make them a real meal." },
+    blurb: "Instant noodles are quick and cheap, but the block is mostly refined flour and the flavour packet is mostly salt and oil. On their own they fill you up without giving you much protein, fibre or vitamins — more of a snack than a meal.",
+    pros: ["ready in minutes and very cheap", "filling for the price", "easy to improve with vegetables and an egg"],
+    cons: ["very salty — the flavour packet alone has most of the salt", "low in fibre and protein", "fried in oil before drying"],
+    tip: "Use only half the flavour packet and add vegetables and a boiled egg to turn it into a real meal. Check salt per 100 g on the label. A lighter everyday swap is daal with rice or a simple egg sandwich." },
   { names: ["corn", "makai", "bhutta"], display: "Corn", verdict: "everyday",
     blurb: "Corn is a sweet, filling grain with fibre.",
     pros: ["fibre", "filling"],
@@ -451,15 +451,16 @@ FOODS.push(
     tip: "A small handful as a snack." },
   // ---- Snacks and drinks ----
   { names: ["biscuit", "biscuits", "cookie", "cookies"], display: "Biscuits", verdict: "treat",
-    blurb: "Most packaged biscuits are a treat, not a health food — refined flour, sugar and palm oil.",
-    pros: ["quick snack with tea"],
-    cons: ["sugar and refined flour, low fibre"],
-    tip: "One or two biscuits with tea is fine for most people. Check the label for sugar — lower is better." },
+    blurb: "Most packaged biscuits are a treat, not a health food. They are usually made from refined white flour, sugar and palm oil, with very little fibre or protein — so they fill you up for a short while and then leave you hungry again, and the sugar adds up fast if you eat them every day with tea.",
+    pros: ["quick and easy with tea", "cheap and easy to find everywhere", "plain kinds are lighter than cream or chocolate ones"],
+    cons: ["made from refined flour, sugar and palm oil, with almost no fibre", "easy to eat a whole pack without noticing", "sweet biscuits are hard on teeth and blood sugar"],
+    tip: "One or two biscuits with tea is fine for most people. On the label, check sugar and salt per 100 g and pick the lower one, and look for palm oil in the ingredients. A better everyday swap is a piece of fruit or a handful of roasted chana with your tea.",
+    careful: "If you have diabetes, sweet biscuits raise blood sugar quickly — ask your doctor how often they fit for you." },
   { names: ["chip", "chips", "crisps"], display: "Potato chips", verdict: "treat",
-    blurb: "Potato chips are a salty, fatty snack — tasty, but not a health food.",
-    pros: ["crunchy and satisfying"],
-    cons: ["high in salt and fat"],
-    tip: "A small pack once in a while, not every day." },
+    blurb: "Potato chips are thin slices of potato fried in oil and covered in salt and flavouring. They taste great, but they are mostly fat and salt with very little of the potato's goodness left — a whole pack disappears fast and still leaves you hungry.",
+    pros: ["crunchy and satisfying", "easy to share", "plain salted are usually lighter than cheese or sour-cream flavours"],
+    cons: ["fried in a lot of oil", "very salty — a lot of the day's salt can come from one pack", "easy to eat far too much without feeling full"],
+    tip: "A small pack once in a while, not every day. On the label, check salt per 100 g and pick the lower one, and choose plain over heavy flavours. A crunchy swap that actually fills you is roasted chana or plain popcorn." },
   { names: ["samosa", "samosas"], display: "Samosa", verdict: "treat",
     blurb: "Samosa is a tasty snack, but it is fried pastry, so it is an occasional food.",
     pros: ["filling, spiced filling"],
@@ -476,10 +477,10 @@ FOODS.push(
     cons: ["sugar and fat"],
     tip: "A small slice on special days." },
   { names: ["chocolate"], display: "Chocolate", verdict: "treat",
-    blurb: "Chocolate is a treat — dark chocolate in small amounts is the better choice.",
-    pros: ["dark chocolate has some antioxidants"],
-    cons: ["sugar and fat"],
-    tip: "A few squares of dark chocolate, not a whole bar." },
+    blurb: "Most chocolate you buy in a shop is milk chocolate — sugar, milk powder and cocoa butter, with very little cocoa. It is a treat: sweet, creamy and easy to eat too much of. Dark chocolate has more cocoa and less sugar, but it is still a treat, not a health food.",
+    pros: ["dark chocolate has some antioxidants", "a little goes a long way for flavour", "a quick treat, no cooking needed"],
+    cons: ["mostly sugar and fat", "easy to eat a whole bar in one sitting", "sweet chocolate is hard on teeth"],
+    tip: "A few squares of dark chocolate, not a whole bar — and check the sugar per 100 g on the label. If you want something sweet every day, a piece of fruit is the better habit." },
   { names: ["ice cream"], display: "Ice cream", verdict: "treat",
     blurb: "Ice cream is a sweet treat — sugar and cream.",
     pros: ["cooling and joyful"],
@@ -492,16 +493,16 @@ FOODS.push(
     tip: "Water, nimbu pani or lassi are better everyday drinks. Keep cola for rare occasions.",
     careful: "With diabetes, soft drinks are best avoided — check with your doctor." },
   { names: ["energy drink", "energy drinks"], display: "Energy drinks", verdict: "treat",
-    blurb: "Energy drinks are not a health drink — they are high in sugar and caffeine.",
-    pros: ["none for health"],
-    cons: ["sugar and caffeine, can affect sleep and heart"],
-    tip: "Best avoided; water and sleep are better energy.",
-    careful: "Not for children or teenagers." },
+    blurb: "Energy drinks are not a health drink. Most are sugar water with a lot of caffeine and flavourings — the energy comes from sugar and caffeine, not from anything your body actually needs, and the crash afterwards often feels worse than before.",
+    pros: ["none for health — they feel like energy, but it is sugar and caffeine"],
+    cons: ["a lot of sugar in most kinds", "high caffeine can disturb sleep and raise your heart rate", "easy to drink too many when you are tired"],
+    tip: "Best avoided; water and a good night's sleep are better energy. If you are reaching for one every day, a short walk and a glass of water do more. Check the sugar and caffeine on the label before you buy one.",
+    careful: "Not for children or teenagers — and if you have a heart condition or high blood pressure, ask your doctor before drinking them." },
   { names: ["fruit juice", "juice"], display: "Fruit juice", verdict: "sometimes",
-    blurb: "Fruit juice is sweet — it has vitamins, but it loses the fibre of the whole fruit.",
-    pros: ["vitamins"],
-    cons: ["sugar without fibre"],
-    tip: "A small glass of fresh juice, or eat the fruit instead." },
+    blurb: "Fruit juice has the vitamins of the fruit, but it loses the fibre — and a glass of juice can hold the sugar of several whole fruits, drunk in seconds. That is why juice is a sometimes drink, not an everyday one.",
+    pros: ["vitamins from the fruit", "hydrating"],
+    cons: ["sugar without fibre", "easy to drink far more sugar than eating the fruit", "sweet juice is hard on teeth"],
+    tip: "A small glass of fresh juice, or eat the fruit instead — you get the fibre and feel full. Check the label: if sugar is added, it is really a soft drink. Water or nimbu pani with little sugar is the better everyday drink." },
   { names: ["tea", "chai", "doodh pati"], display: "Tea", verdict: "everyday",
     blurb: "Plain tea or chai without sugar is a light, comforting drink.",
     pros: ["hydrating", "antioxidants"],
@@ -775,20 +776,20 @@ FOODS.push(
     cons: ["butter and salt versions are heavy"],
     tip: "Plain or lightly salted popcorn is a good snack." },
   { names: ["namkeen", "nimco", "sev"], display: "Namkeen", verdict: "treat",
-    blurb: "Namkeen is a salty fried snack — easy to eat too much of.",
-    pros: ["crunchy, filling"],
-    cons: ["fried, very salty"],
-    tip: "A small handful, not the whole packet." },
+    blurb: "Namkeen — sev, nimco, chivda — is fried chickpea flour and lentils with salt and spices. It is crunchy and filling, but it is fried in oil and very salty, and the small pieces make it easy to eat a whole packet without noticing.",
+    pros: ["crunchy and filling", "made from lentils and chickpea flour", "goes well with tea"],
+    cons: ["fried in a lot of oil", "very salty", "easy to eat a whole packet"],
+    tip: "A small handful, not the whole packet — put it in a bowl and close the packet. Check salt per 100 g on the label. A lighter crunchy swap is roasted chana, which is protein and fibre without the frying." },
   { names: ["mathri"], display: "Mathri", verdict: "treat",
-    blurb: "Mathri is a fried, salty biscuit — a treat with tea.",
-    pros: ["filling"],
-    cons: ["fried, salty"],
-    tip: "One or two with tea." },
+    blurb: "Mathri is a crisp fried biscuit made from white flour, ghee or oil, and salt, often with ajwain. It keeps well and tastes great with tea, but it is fried and salty with almost no fibre — a treat, not an everyday food.",
+    pros: ["filling and keeps well", "tastes good with tea"],
+    cons: ["fried in ghee or oil", "salty and refined flour", "easy to eat several at once"],
+    tip: "One or two with tea is enough. A lighter swap for tea time is plain rusk or a piece of fruit." },
   { names: ["rusk", "cake rusk"], display: "Rusk", verdict: "sometimes",
-    blurb: "Rusk is a crisp baked biscuit — lighter than cake, but often sweet.",
-    pros: ["light, filling"],
-    cons: ["sugar in sweet rusks"],
-    tip: "Plain rusk with tea, not the sugary kind." },
+    blurb: "Rusk is a crisp, twice-baked biscuit — lighter than cake and good with tea. Plain rusk is mostly refined flour and a little sugar, while cake rusk and sweet rusk have much more sugar and fat, so the kind you pick matters a lot.",
+    pros: ["light and filling", "good with tea", "plain rusk is lighter than cake or cream biscuits"],
+    cons: ["sugar in sweet rusks", "refined flour, low fibre", "cake rusk is closer to cake"],
+    tip: "Plain rusk with tea, not the sugary kind — and check the sugar on the label. A piece of fruit with your tea is a better everyday habit." },
   { names: ["paya", "trotter", "trotters"], display: "Paya", verdict: "treat",
     blurb: "Paya is a rich, fatty traditional dish — best as an occasional treat.",
     pros: ["rich, warming"],
@@ -1293,45 +1294,46 @@ FOODS.push(
     tip: "Occasionally, in a small glass." },
   // ---- Snacks (v2) ----
   { names: ["crackers", "cracker"], display: "Crackers", verdict: "sometimes",
-    blurb: "Crackers are light and crisp — better than fried snacks, but often salty.",
-    pros: ["light"],
-    cons: ["salt, refined flour"],
-    tip: "Eat with cheese or hummus." },
+    blurb: "Crackers are light and crisp, and better than fried snacks — but most are made from refined flour with a lot of salt, and they do not fill you up on their own.",
+    pros: ["light and crisp", "better than fried snacks", "good with a topping"],
+    cons: ["salt and refined flour", "low fibre", "easy to eat a whole sleeve"],
+    tip: "Eat with cheese, hummus or peanut butter so you actually feel full. Check the salt per 100 g on the label. A more filling swap is roasted chana or a small handful of nuts." },
   { names: ["digestive biscuits", "digestive biscuit"], display: "Digestive biscuits", verdict: "sometimes",
-    blurb: "Digestive biscuits sound healthy, but they are still sweet biscuits.",
-    pros: ["filling"],
-    cons: ["sugar, refined flour"],
-    tip: "One or two with tea." },
+    blurb: "Digestive biscuits sound healthy, but the name is mostly marketing. They are still sweet biscuits made from refined flour, sugar and palm oil — a little wholemeal flour does not make them a health food, and they have almost as much sugar as other biscuits.",
+    pros: ["a little wholemeal flour", "filling with tea"],
+    cons: ["still sweet biscuits, with sugar and palm oil", "the healthy-sounding name is misleading", "easy to eat several at once"],
+    tip: "One or two with tea, same as other biscuits. On the label, check the sugar per 100 g — you will see it is close to a normal biscuit. A better everyday swap is a piece of fruit or plain rusk.",
+    careful: "If you have diabetes, digestive biscuits still raise blood sugar — ask your doctor how often they fit for you." },
   { names: ["muffins", "muffin"], display: "Muffins", verdict: "treat",
-    blurb: "Muffins are sweet baked cakes — tasty, but sugary.",
-    pros: ["filling"],
-    cons: ["sugar, refined flour"],
-    tip: "Small muffin, occasionally." },
+    blurb: "Muffins are sweet baked cakes in a cup — refined flour, sugar, oil and flavouring. A big bakery muffin can be as sweet as a slice of cake, so it is a treat, not a breakfast food.",
+    pros: ["filling and tasty"],
+    cons: ["sugar and refined flour", "big ones are very sweet", "easy to eat a whole one quickly"],
+    tip: "A small muffin, occasionally — share a big one if you can. A better everyday breakfast is oats, eggs, or fruit with yogurt." },
   { names: ["donuts", "doughnuts", "donut"], display: "Donuts", verdict: "treat",
-    blurb: "Donuts are fried sweet dough — a treat.",
-    pros: ["fun, filling"],
-    cons: ["fried, sugar"],
-    tip: "One, occasionally." },
+    blurb: "Donuts are fried sweet dough with sugar glaze or filling — a treat. The frying adds oil, the glaze adds sugar, and there is almost no fibre or protein in them.",
+    pros: ["fun and filling"],
+    cons: ["fried in oil", "a lot of sugar", "no fibre or protein"],
+    tip: "One, occasionally, and enjoy it slowly. A better everyday sweet is fruit, or a small piece of cake on a special day." },
   { names: ["croissant"], display: "Croissant", verdict: "treat",
-    blurb: "A croissant is buttery pastry — rich and filling.",
-    pros: ["filling"],
-    cons: ["butter, refined flour"],
-    tip: "One, occasionally." },
+    blurb: "A croissant is layers of white pastry and butter — rich, flaky and filling. It tastes wonderful, but it is mostly butter and refined flour, so it is a treat, not an everyday breakfast.",
+    pros: ["rich and filling", "tastes good with coffee"],
+    cons: ["a lot of butter", "refined flour, low fibre"],
+    tip: "One, occasionally — and skip the extra butter and jam. A lighter everyday breakfast is bread with egg, or oats with fruit." },
   { names: ["nachos"], display: "Nachos", verdict: "treat",
-    blurb: "Nachos are fried chips with cheese — salty and heavy.",
-    pros: ["fun, filling"],
-    cons: ["fried, cheese, salt"],
-    tip: "Share a portion, occasionally." },
+    blurb: "Nachos are fried corn chips with melted cheese and sauce — salty, oily and heavy. They are fun to share, but a plate of them is mostly fat and salt with very little nutrition.",
+    pros: ["fun to share", "filling"],
+    cons: ["fried chips, cheese and salt", "very heavy for a snack", "easy to eat a whole plate"],
+    tip: "Share a portion, occasionally, and add salsa and salad if you can. A lighter crunchy swap is plain popcorn or roasted chana." },
   { names: ["pretzels", "pretzel"], display: "Pretzels", verdict: "sometimes",
-    blurb: "Pretzels are salty baked snacks — light but salty.",
-    pros: ["light"],
-    cons: ["salt"],
-    tip: "A small handful." },
+    blurb: "Pretzels are salty baked snacks — light and low in fat, but they are mostly refined flour and salt, with almost no fibre or protein to keep you full.",
+    pros: ["light and low in fat", "baked, not fried"],
+    cons: ["very salty", "refined flour, low fibre"],
+    tip: "A small handful, and drink water with them. A more filling swap is roasted chana or a handful of nuts." },
   { names: ["granola bar", "granola bars", "energy bar"], display: "Granola bars", verdict: "sometimes",
-    blurb: "Granola bars sound healthy, but many are sugary — check the label.",
-    pros: ["oats, nuts"],
-    cons: ["sugar in most kinds"],
-    tip: "Pick one with little sugar, or eat nuts instead." },
+    blurb: "Granola bars sound healthy, but many are really candy bars with oats — held together with sugar syrup and honey. Some are better than others, so the label is the only honest guide.",
+    pros: ["oats and nuts in the good ones", "easy to carry"],
+    cons: ["sugar in most kinds", "some are as sweet as chocolate", "small bar, easy to eat two"],
+    tip: "Pick one with little sugar — check the sugar per 100 g and look for nuts and oats first in the ingredients. Or just eat a handful of nuts instead." },
   { names: ["roasted chana", "bhuna chana"], display: "Roasted chana", verdict: "everyday",
     blurb: "Roasted chana is a healthy snack — protein and fibre, very filling.",
     pros: ["protein, fibre"],
@@ -1353,10 +1355,10 @@ FOODS.push(
     cons: ["sugar, butter"],
     tip: "One or two, occasionally." },
   { names: ["cream biscuits", "cream biscuit"], display: "Cream biscuits", verdict: "treat",
-    blurb: "Cream biscuits are sweet and creamy — a treat with tea.",
-    pros: ["filling"],
-    cons: ["sugar, cream"],
-    tip: "One or two, occasionally." },
+    blurb: "Cream biscuits are two sweet biscuits with a sugary cream filling in the middle — refined flour, sugar, palm oil and flavouring. They are a treat with tea: sweet, creamy, and easy to eat too many of before you notice.",
+    pros: ["sweet and creamy", "a quick treat with tea"],
+    cons: ["sugar and cream filling, with palm oil", "very little fibre", "easy to eat a whole pack"],
+    tip: "One or two, occasionally. Check the sugar per 100 g on the label and the cream filling in the ingredients. A better everyday swap is a plain biscuit or two, or a piece of fruit with your tea." },
   { names: ["sattu"], display: "Sattu", verdict: "everyday",
     blurb: "Sattu is roasted gram flour — protein and fibre, very filling.",
     pros: ["protein, fibre"],
@@ -1693,20 +1695,20 @@ FOODS.push(
     cons: ["sugar"],
     tip: "Small portion." },
   { names: ["dark chocolate"], display: "Dark chocolate", verdict: "sometimes",
-    blurb: "Dark chocolate is better than milk chocolate in small amounts — rich and bitter.",
-    pros: ["less sugar than milk chocolate"],
-    cons: ["still sugary and fatty"],
-    tip: "One or two small squares." },
+    blurb: "Dark chocolate has more cocoa and less sugar than milk chocolate, so a small amount is a reasonable treat. It is still rich in fat and sugar, though — the higher the cocoa, the less sweet it is, and the easier it is to stop at a little.",
+    pros: ["less sugar than milk chocolate", "more cocoa means some antioxidants", "a small piece is satisfying"],
+    cons: ["still sugary and fatty", "easy to eat too much", "the bitter taste is not for everyone"],
+    tip: "One or two small squares after a meal. Check the cocoa percentage on the label — higher cocoa usually means less sugar. A sweet everyday swap is a handful of berries or a piece of fruit." },
   { names: ["milk chocolate"], display: "Milk chocolate", verdict: "treat",
-    blurb: "Milk chocolate is sweet and creamy — a treat.",
-    pros: ["tasty"],
-    cons: ["sugar, fat"],
-    tip: "A small piece, occasionally." },
+    blurb: "Milk chocolate is the sweetest kind — mostly sugar and milk powder with some cocoa butter. It melts nicely and tastes creamy, but it is a treat, not a food that fills you up or gives you much nutrition.",
+    pros: ["creamy and sweet", "a small piece is a quick treat"],
+    cons: ["mostly sugar and fat", "easy to eat a whole bar", "hard on teeth if eaten often"],
+    tip: "A small piece, occasionally, and enjoy it slowly. Check the sugar per 100 g on the label. A better daily sweet is fruit, or a couple of squares of dark chocolate." },
   { names: ["toffee", "candy"], display: "Toffee", verdict: "treat",
-    blurb: "Toffee is pure sugar — a treat that sticks to teeth.",
-    pros: ["sweet"],
-    cons: ["sugar, bad for teeth"],
-    tip: "Occasionally, and brush after." },
+    blurb: "Toffee and candy are almost pure sugar — boiled sugar with flavour and colour. They give a quick sweet hit and nothing else: no fibre, no protein, no vitamins, and they stick to your teeth.",
+    pros: ["cheap and easy to carry", "a quick sweet taste"],
+    cons: ["almost pure sugar", "sticks to teeth and causes cavities", "gives no nutrition at all"],
+    tip: "Occasionally, and brush after. If you want something sweet every day, a piece of fruit or a few raisins with nuts is a much better habit." },
   { names: ["chewing gum"], display: "Chewing gum", verdict: "sometimes",
     blurb: "Chewing gum is mostly harmless — sugar-free is better for teeth.",
     pros: ["fresh breath"],
@@ -1789,10 +1791,10 @@ FOODS.push(
     cons: ["oil, salt"],
     tip: "Eat it fresh from a clean place, in small portions." },
   { names: ["bakery bread"], display: "Bakery bread", verdict: "sometimes",
-    blurb: "Bakery bread is fresh white bread — soft and tasty, but refined flour.",
-    pros: ["fresh, soft"],
-    cons: ["refined flour"],
-    tip: "Eat with egg or daal, not just butter and jam." },
+    blurb: "Bakery bread is fresh white bread — soft and tasty, but it is refined flour with little fibre. It fills you up for a short while, then leaves you hungry again, especially with just butter and jam.",
+    pros: ["fresh and soft", "easy to eat"],
+    cons: ["refined flour, low fibre", "does not keep you full for long"],
+    tip: "Eat with egg or daal, not just butter and jam — the protein keeps you full. A better everyday swap is whole wheat bread, which has more fibre." },
   { names: ["fresh milk", "shop milk", "doodh wala"], display: "Fresh milk", verdict: "everyday",
     blurb: "Fresh milk from the shop is good — but always boil it first.",
     pros: ["calcium, protein"],
@@ -1800,15 +1802,16 @@ FOODS.push(
     tip: "Boil it well, then cool and store in the fridge.",
     careful: "Never drink shop milk raw — always boil it first." },
   { names: ["packaged juice", "juice box", "tetra pack juice"], display: "Packaged juice", verdict: "sometimes",
-    blurb: "Packaged juice is mostly sugar water with flavour — check the label before you buy it.",
-    pros: ["convenient"],
-    cons: ["sugar, no fibre"],
-    tip: "Check the label for sugar, and eat the fruit instead when you can." },
+    blurb: "Packaged juice in a tetra pack is not the same as fresh juice. It is usually juice from concentrate with added sugar and flavour, and no fibre at all — closer to a sweet drink than to fruit. The front of the pack often shows fresh fruit, so the label on the back is the honest part.",
+    pros: ["convenient and easy to carry", "some kinds have vitamins"],
+    cons: ["mostly sugar water with flavour", "no fibre at all", "the pack often looks healthier than it is"],
+    tip: "Check the label: look for added sugar in the ingredients and compare sugar per 100 g — lower is better, and a pack that says 'fruit drink' is usually sweeter than one that says 'fruit juice'. Eat the fruit instead when you can, or drink water.",
+    careful: "If you have diabetes, packaged juice raises blood sugar fast — check with your doctor." },
   { names: ["bakery items", "bakery"], display: "Bakery items", verdict: "sometimes",
-    blurb: "Bakery items are mostly cakes, biscuits and rusks — refined flour and sugar.",
-    pros: ["tasty, fresh"],
-    cons: ["refined flour, sugar, oil"],
-    tip: "Plain rusk or bread is lighter than cake." },
+    blurb: "Bakery items — cakes, pastries, biscuits and sweet buns — are mostly refined white flour, sugar and butter or oil. They are fresh and tasty, but they are treats: a lot of sugar and fat, and very little fibre or protein to keep you full.",
+    pros: ["fresh and tasty", "easy to buy on the way"],
+    cons: ["refined flour, sugar and fat in most kinds", "easy to eat too much", "sweet items are hard on teeth and blood sugar"],
+    tip: "Plain rusk or bread is lighter than cake, and one small piece is enough for most people. On the label, check sugar per 100 g. A better everyday snack is fruit, roasted chana, or a handful of nuts." },
   { names: ["tandoor naan", "fresh naan"], display: "Tandoor naan", verdict: "sometimes",
     blurb: "Fresh tandoor naan is soft white bread — tasty, but refined flour.",
     pros: ["fresh, soft"],
@@ -2253,10 +2256,10 @@ function hashStr(s: string): number {
   return h;
 }
 
-const OPENERS = ["**Short answer:** ", "**In short:** ", "**The honest take:** ", "**Quick answer:** "];
-const GOOD_LABELS = ["**What's good:** ", "**The good side:** ", "**Why it's good:** "];
-const WATCH_LABELS = ["**Watch out for:** ", "**The catch:** ", "**Be careful about:** "];
-const TIP_LABELS = ["**How to enjoy it:** ", "**Best way to have it:** ", "**My suggestion:** "];
+const OPENERS = ["Short answer: ", "In short: ", "The honest take: ", "Quick answer: "];
+const GOOD_LABELS = ["What's good: ", "The good side: ", "Why it's good: "];
+const WATCH_LABELS = ["Watch out for: ", "The catch: ", "Be careful about: "];
+const TIP_LABELS = ["How to enjoy it: ", "Best way to have it: ", "My suggestion: "];
 const CLOSERS = [
   "Do you usually have it with roti or rice?",
   "Want me to compare it with something else?",
@@ -2274,7 +2277,7 @@ function foodAnswer(entry: FoodEntry, extra?: string): string {
     `${WATCH_LABELS[h % WATCH_LABELS.length]}${entry.cons.join("; ")}.`,
     `${TIP_LABELS[h % TIP_LABELS.length]}${entry.tip}`,
   ];
-  if (entry.careful) lines.push(`**Who should be careful:** ${entry.careful}`);
+  if (entry.careful) lines.push(`Who should be careful: ${entry.careful}`);
   if (extra) lines.push(extra);
   lines.push("", CLOSERS[h % CLOSERS.length]);
   return lines.join("\n");
@@ -2283,17 +2286,17 @@ function foodAnswer(entry: FoodEntry, extra?: string): string {
 /** Pros and cons, spelled out, for "pros and cons of X" / "faide aur nuksan" questions. */
 function prosConsAnswer(entry: FoodEntry): string {
   const lines = [
-    `**Pros and cons of ${entry.display}:**`,
+    `Pros and cons of ${entry.display}:`,
     "",
-    "**Pros:**",
+    "Pros:",
     ...entry.pros.map((p) => `- ${p.charAt(0).toUpperCase()}${p.slice(1)}.`),
     "",
-    "**Cons:**",
+    "Cons:",
     ...entry.cons.map((c) => `- ${c.charAt(0).toUpperCase()}${c.slice(1)}.`),
     "",
-    `**Best way to have it:** ${entry.tip}`,
+    `Best way to have it: ${entry.tip}`,
   ];
-  if (entry.careful) lines.push(`**Who should be careful:** ${entry.careful}`);
+  if (entry.careful) lines.push(`Who should be careful: ${entry.careful}`);
   lines.push("", CLOSERS[hashStr(entry.display) % CLOSERS.length]);
   return lines.join("\n");
 }
@@ -2304,10 +2307,10 @@ function whyAnswer(entry: FoodEntry): string {
   const lines = [
     `Good question — here's why ${entry.display.toLowerCase()} counts as ${verdictWord}.`,
     "",
-    `**The good side:** ${entry.pros.join("; ")}.`,
-    `**The catch:** ${entry.cons.join("; ")}.`,
+    `The good side: ${entry.pros.join("; ")}.`,
+    `The catch: ${entry.cons.join("; ")}.`,
     "",
-    entry.careful ? `**Who should be careful:** ${entry.careful}` : `**Best way to have it:** ${entry.tip}`,
+    entry.careful ? `Who should be careful: ${entry.careful}` : `Best way to have it: ${entry.tip}`,
     "",
     CLOSERS[hashStr(entry.display) % CLOSERS.length],
   ];
@@ -2317,7 +2320,7 @@ function whyAnswer(entry: FoodEntry): string {
 /** Render a recipe as answer lines (used by the cooking path and "yes" follow-ups). */
 function recipeLines(recipe: Recipe): string {
   return [
-    `**${recipe.title}**`,
+    `${recipe.title}`,
     "",
     `You'll need: ${recipe.needs}.`,
     "",
@@ -2330,45 +2333,45 @@ function compareAnswer(a: FoodEntry, b: FoodEntry): string {
   const rank: Record<Verdict, number> = { everyday: 2, sometimes: 1, treat: 0 };
   const better = rank[a.verdict] > rank[b.verdict] ? a : rank[b.verdict] > rank[a.verdict] ? b : null;
   const lines = [
-    `**Short answer:** ${better ? `${better.display} is the better everyday choice of the two.` : `${a.display} and ${b.display} are roughly similar — both are fine in modest amounts.`}`,
+    `Short answer: ${better ? `${better.display} is the better everyday choice of the two.` : `${a.display} and ${b.display} are roughly similar — both are fine in modest amounts.`}`,
     "",
-    `**${a.display}:** ${a.blurb}`,
-    `**${b.display}:** ${b.blurb}`,
+    `${a.display}: ${a.blurb}`,
+    `${b.display}: ${b.blurb}`,
     "",
-    `**How to enjoy them:** ${a.tip} ${b.tip}`,
+    `How to enjoy them: ${a.tip} ${b.tip}`,
     "",
     "Want me to compare either of them with something else?",
   ];
   return lines.join("\n");
 }
 
-const LABEL_GUIDE = `**Reading a food label — the quick version:**
+const LABEL_GUIDE = `Reading a food label — the quick version:
 
-**Per 100 g is the fair comparison.** Packets show nutrition per serving and per 100 g — always compare the per 100 g column, because serving sizes differ between brands.
+Per 100 g is the fair comparison. Packets show nutrition per serving and per 100 g — always compare the per 100 g column, because serving sizes differ between brands.
 
-**Sugar, salt and fat:** lower is usually better. The traffic-light colours on some packs help: green means low, amber means medium, red means high.
+Sugar, salt and fat: lower is usually better. The traffic-light colours on some packs help: green means low, amber means medium, red means high.
 
-**Ingredients are listed heaviest first.** The first ingredient is the biggest part of the food. If sugar, palm oil or refined flour is first, it is mostly that.
+Ingredients are listed heaviest first. The first ingredient is the biggest part of the food. If sugar, palm oil or refined flour is first, it is mostly that.
 
-**Allergens are in bold.** Wheat, milk, egg, peanut, nuts, soy, sesame, fish and mustard must be highlighted in the ingredients list — check there first.
+Allergens are in bold. Wheat, milk, egg, peanut, nuts, soy, sesame, fish and mustard must be highlighted in the ingredients list — check there first.
 
-**Dates and storage:** check the use-by date and how to store it. When in doubt about a date or a smell, throw it out.
+Dates and storage: check the use-by date and how to store it. When in doubt about a date or a smell, throw it out.
 
 Send a clear photo of the label, or type the ingredients, and I will go through them with you.`;
 
-const PLATE_GUIDE = `**A balanced plate, in general:**
+const PLATE_GUIDE = `A balanced plate, in general:
 
 Fill about half the plate with vegetables or salad, about a quarter with protein (daal, chicken, egg, fish or paneer), and about a quarter with grains (roti or rice). Add a spoon of yogurt if you like.
 
 Tell me what you actually ate — for example "rice, chicken curry and salad" — and I will say how it looks.`;
 
-const COOK_TODAY = `**Three quick ideas from everyday ingredients:**
+const COOK_TODAY = `Three quick ideas from everyday ingredients:
 
-**Chana chaat** — boiled chickpeas with onion, tomato, lemon and chaat masala. No cooking needed.
+Chana chaat — boiled chickpeas with onion, tomato, lemon and chaat masala. No cooking needed.
 
-**Masala omelette with roti** — eggs with onion, tomato and green chilli, folded and served with roti.
+Masala omelette with roti — eggs with onion, tomato and green chilli, folded and served with roti.
 
-**Daal with rice and salad** — simple daal tadka, rice and a cucumber salad. A complete, balanced meal.
+Daal with rice and salad — simple daal tadka, rice and a cucumber salad. A complete, balanced meal.
 
 Tell me what you have in the kitchen — for example "chickpeas, eggs and potatoes" — and I will give you a recipe for it.`;
 
@@ -2444,24 +2447,24 @@ function analyseTypedList(original: string, norm: string): string | null {
       const groups = ALLERGEN_MAP.filter((g) => itemHas(item, g.words)).map((g) => g.allergen);
       if (target) {
         const hit = groups.includes(target.allergen);
-        lines.push(`- **${item}** — ${hit ? `contains ${target.allergen}.` : `not related to ${target.allergen}.`}`);
+        lines.push(`- ${item} — ${hit ? `contains ${target.allergen}.` : `not related to ${target.allergen}.`}`);
       } else {
-        lines.push(`- **${item}** — ${groups.length ? `contains ${groups.join(", ")}.` : "no major allergen in this item."}`);
+        lines.push(`- ${item} — ${groups.length ? `contains ${groups.join(", ")}.` : "no major allergen in this item."}`);
       }
     }
     lines.push("", "This only covers what you typed — always check the real label too, because recipes change and \"may contain\" warnings matter.");
   } else if (isHalalQ) {
     for (const item of items) {
-      if (itemHas(item, NON_HALAL_WORDS)) lines.push(`- **${item}** — not halal.`);
-      else if (itemHas(item, AMBIGUOUS_HALAL_WORDS)) lines.push(`- **${item}** — I can't tell from the name alone; check the label for the source or a halal mark.`);
-      else lines.push(`- **${item}** — no obvious problem in this list.`);
+      if (itemHas(item, NON_HALAL_WORDS)) lines.push(`- ${item} — not halal.`);
+      else if (itemHas(item, AMBIGUOUS_HALAL_WORDS)) lines.push(`- ${item} — I can't tell from the name alone; check the label for the source or a halal mark.`);
+      else lines.push(`- ${item} — no obvious problem in this list.`);
     }
     lines.push("", "Halal also depends on certification — check the label for a halal mark.");
   } else {
     const isVegan = /\bvegan\b/.test(norm);
     const bad = isVegan ? ANIMAL_WORDS : MEAT_WORDS;
     for (const item of items) {
-      lines.push(`- **${item}** — ${itemHas(item, bad) ? `not ${isVegan ? "vegan" : "vegetarian"}.` : `${isVegan ? "vegan" : "vegetarian"} as far as this list shows.`}`);
+      lines.push(`- ${item} — ${itemHas(item, bad) ? `not ${isVegan ? "vegan" : "vegetarian"}.` : `${isVegan ? "vegan" : "vegetarian"} as far as this list shows.`}`);
     }
     lines.push("", "This is only from the list you typed — check the real label too.");
   }
@@ -2501,14 +2504,14 @@ function barcodeAnswer(p: LocalBarcodeProduct, norm: string): string | null {
     if (target) {
       const found = target.words.some((w) => wholeWord(listed, w));
       lines.push(found
-        ? `**${target.allergen} is listed** in the product data${p.allergens ? ` (allergens listed: ${p.allergens}).` : "."}`
-        : `**${target.allergen} is not listed** in the product data I have. That is not a guarantee — the data may be incomplete, so check the label.`);
+        ? `${target.allergen} is listed in the product data${p.allergens ? ` (allergens listed: ${p.allergens}).` : "."}`
+        : `${target.allergen} is not listed in the product data I have. That is not a guarantee — the data may be incomplete, so check the label.`);
     } else if (p.allergens) {
-      lines.push(`**Allergens listed:** ${p.allergens}.`);
+      lines.push(`Allergens listed: ${p.allergens}.`);
     } else {
       lines.push("No allergens are listed in the product data — that is not a guarantee. Check the label.");
     }
-    if (p.ingredients) lines.push(`**Ingredients listed:** ${p.ingredients}.`);
+    if (p.ingredients) lines.push(`Ingredients listed: ${p.ingredients}.`);
     lines.push("", "Source: Open Food Facts, ODbL.");
     return lines.join("\n");
   }
@@ -2526,12 +2529,12 @@ function barcodeAnswer(p: LocalBarcodeProduct, norm: string): string | null {
     ? p.categories.split(",").map((c) => c.trim()).filter(Boolean).slice(0, 3).join(", ")
     : "";
   const lines = [
-    `**Short answer:** ${name}${p.brands ? ` (${p.brands})` : ""}${shortCategories ? ` — ${shortCategories}` : ""}.`,
+    `Short answer: ${name}${p.brands ? ` (${p.brands})` : ""}${shortCategories ? ` — ${shortCategories}` : ""}.`,
     "",
   ];
   if (scoreLine) lines.push(scoreLine, "");
-  if (p.ingredients) lines.push(`**Ingredients listed:** ${p.ingredients}.`);
-  if (p.allergens) lines.push(`**Allergens listed:** ${p.allergens}.`);
+  if (p.ingredients) lines.push(`Ingredients listed: ${p.ingredients}.`);
+  if (p.allergens) lines.push(`Allergens listed: ${p.allergens}.`);
   lines.push(
     "",
     "This is from Open Food Facts, which is crowdsourced — check the real label before you rely on it, especially for allergens.",
@@ -2630,212 +2633,212 @@ function conditionLine(norm: string): string | null {
 
 // ---- Topic guides (v2): meal ideas, health topics, market and hotel food ----
 
-const BREAKFAST_IDEAS = `**Breakfast ideas — light, filling, and quick:**
+const BREAKFAST_IDEAS = `Breakfast ideas — light, filling, and quick:
 
-- **Oats porridge** with banana or dates — filling and gentle on the stomach.
-- **Masala omelette with roti** — protein that keeps you full till lunch.
-- **Boiled egg with toast** — simple and quick.
-- **Paratha with yogurt** — filling, but go easy on the oil.
-- **Chana chaat or a piece of fruit** — light, for days when you are not very hungry.
+- Oats porridge with banana or dates — filling and gentle on the stomach.
+- Masala omelette with roti — protein that keeps you full till lunch.
+- Boiled egg with toast — simple and quick.
+- Paratha with yogurt — filling, but go easy on the oil.
+- Chana chaat or a piece of fruit — light, for days when you are not very hungry.
 
 A good breakfast has some protein and some fibre — it keeps you full far longer than just tea and biscuits.
 
 Do you usually eat a big breakfast or something light?`;
 
-const LUNCH_IDEAS = `**Lunch ideas — a full plate without feeling heavy:**
+const LUNCH_IDEAS = `Lunch ideas — a full plate without feeling heavy:
 
-- **Daal chawal with salad** — cheap, filling, and a good everyday plate.
-- **Roti with sabzi and yogurt** — light and full of fibre.
-- **Chicken curry with roti** — keep the oil low and add salad.
-- **Chana chaat with a boiled egg** — quick, high in protein.
-- **Khichdi with yogurt** — gentle and easy to digest.
+- Daal chawal with salad — cheap, filling, and a good everyday plate.
+- Roti with sabzi and yogurt — light and full of fibre.
+- Chicken curry with roti — keep the oil low and add salad.
+- Chana chaat with a boiled egg — quick, high in protein.
+- Khichdi with yogurt — gentle and easy to digest.
 
 Half your plate vegetables, a quarter roti or rice, a quarter protein — that is the shape of a good lunch.
 
 Do you eat lunch at home or outside?`;
 
-const DINNER_IDEAS = `**Dinner ideas — lighter is better late in the day:**
+const DINNER_IDEAS = `Dinner ideas — lighter is better late in the day:
 
-- **Vegetable soup or daal soup** — warm, light, and easy on the stomach.
-- **Grilled chicken or fish with salad** — protein without heaviness.
-- **Khichdi with yogurt** — a classic light dinner.
-- **Roti with sabzi** — simple and filling.
-- **A small bowl of daal with a little rice** — light and satisfying.
+- Vegetable soup or daal soup — warm, light, and easy on the stomach.
+- Grilled chicken or fish with salad — protein without heaviness.
+- Khichdi with yogurt — a classic light dinner.
+- Roti with sabzi — simple and filling.
+- A small bowl of daal with a little rice — light and satisfying.
 
 Dinner is best kept lighter than lunch, and not too late — heavy fried food at night sits badly.
 
 What time do you usually eat dinner?`;
 
-const WHAT_TO_EAT = `**What should you eat? Here's a simple rule for most days:**
+const WHAT_TO_EAT = `What should you eat? Here's a simple rule for most days:
 
-- **Half your plate vegetables** — sabzi, salad, or any green you have.
-- **A quarter roti or rice** — whole wheat roti is better than white bread.
-- **A quarter protein** — daal, egg, chicken, fish, or chickpeas.
-- **Water with the meal** — plain water beats soft drinks.
-- **Fruit for a snack** — a banana or an apple beats biscuits most days.
+- Half your plate vegetables — sabzi, salad, or any green you have.
+- A quarter roti or rice — whole wheat roti is better than white bread.
+- A quarter protein — daal, egg, chicken, fish, or chickpeas.
+- Water with the meal — plain water beats soft drinks.
+- Fruit for a snack — a banana or an apple beats biscuits most days.
 
 That plate works for most healthy people most days. If you have diabetes, blood pressure, or another condition, tell me which one and I will adjust it.
 
 Tell me what you have at home and I will suggest something from it.`;
 
-const WEIGHT_LOSS_GUIDE = `**Losing weight, the steady way:**
+const WEIGHT_LOSS_GUIDE = `Losing weight, the steady way:
 
-- **Smaller portions** — one roti instead of two, and a smaller plate of rice.
-- **Half your plate vegetables** — they fill you up with very few calories.
-- **Cut back on sugar and fried food** — soft drinks, biscuits, and fried snacks add up fast.
-- **Drink water before meals** — it genuinely helps with portions.
-- **Walk daily** — even a short walk after meals helps.
+- Smaller portions — one roti instead of two, and a smaller plate of rice.
+- Half your plate vegetables — they fill you up with very few calories.
+- Cut back on sugar and fried food — soft drinks, biscuits, and fried snacks add up fast.
+- Drink water before meals — it genuinely helps with portions.
+- Walk daily — even a short walk after meals helps.
 
 There is no quick fix, and crash diets do more harm than good — slow and steady is the way that lasts.
 
 If you have diabetes, blood pressure, or any medical condition, please check with your doctor before changing your diet.`;
 
-const WEIGHT_GAIN_GUIDE = `**Gaining weight in a healthy way:**
+const WEIGHT_GAIN_GUIDE = `Gaining weight in a healthy way:
 
-- **Eat more often** — three meals plus a snack or two.
-- **Add energy-rich foods** — milk, eggs, nuts, peanut butter, daal, and roti.
-- **A glass of milk with breakfast and before bed** — an easy way to add calories.
-- **Nuts and dates as snacks** — small, but full of energy.
-- **Don't skip meals** — and don't rely on junk food to gain weight.
+- Eat more often — three meals plus a snack or two.
+- Add energy-rich foods — milk, eggs, nuts, peanut butter, daal, and roti.
+- A glass of milk with breakfast and before bed — an easy way to add calories.
+- Nuts and dates as snacks — small, but full of energy.
+- Don't skip meals — and don't rely on junk food to gain weight.
 
 Healthy weight gain is about eating more good food, not just more food.
 
 If you are losing weight without trying, please see a doctor — that is worth checking.`;
 
-const PROTEIN_GUIDE = `**Foods rich in protein:**
+const PROTEIN_GUIDE = `Foods rich in protein:
 
-- **Eggs** — the cheapest good protein around.
-- **Chicken and fish** — grilled is better than fried.
-- **Daal, chickpeas and beans** — protein plus fibre, and cheap.
-- **Yogurt and paneer** — good with any meal.
-- **Nuts and seeds** — a handful a day goes a long way.
+- Eggs — the cheapest good protein around.
+- Chicken and fish — grilled is better than fried.
+- Daal, chickpeas and beans — protein plus fibre, and cheap.
+- Yogurt and paneer — good with any meal.
+- Nuts and seeds — a handful a day goes a long way.
 
 For muscle, protein works together with exercise — food alone won't build muscle, and exercise alone won't either. You need both.
 
 Do you exercise regularly, or are you starting out?`;
 
-const DIABETES_GUIDE = `**Eating with diabetes — general guidance:**
+const DIABETES_GUIDE = `Eating with diabetes — general guidance:
 
-- **Whole grains over white** — whole wheat roti and brown rice are better than white bread and white rice.
-- **Daal, chickpeas and vegetables** — they fill you up without spiking sugar.
-- **Less sugar and sweet drinks** — soft drinks, packaged juice, and sweet tea are the biggest problem.
-- **Fruit is fine, whole fruit** — eat it, don't drink it as juice.
-- **Small, regular meals** — and watch the portion of rice and roti.
+- Whole grains over white — whole wheat roti and brown rice are better than white bread and white rice.
+- Daal, chickpeas and vegetables — they fill you up without spiking sugar.
+- Less sugar and sweet drinks — soft drinks, packaged juice, and sweet tea are the biggest problem.
+- Fruit is fine, whole fruit — eat it, don't drink it as juice.
+- Small, regular meals — and watch the portion of rice and roti.
 
 This is general information, not medical advice — please check with your doctor or a dietitian for your own plan.`;
 
-const BP_GUIDE = `**Eating with high blood pressure — general guidance:**
+const BP_GUIDE = `Eating with high blood pressure — general guidance:
 
-- **Less salt** — the biggest single change. Taste before adding more.
-- **Less packaged food** — chips, namkeen, instant noodles, and pickles are all very salty.
-- **More vegetables and fruit** — they help more than most people realise.
-- **Less fried food** — and measure the oil instead of pouring freely.
-- **More water, less soft drink** — soft drinks add salt and sugar both.
+- Less salt — the biggest single change. Taste before adding more.
+- Less packaged food — chips, namkeen, instant noodles, and pickles are all very salty.
+- More vegetables and fruit — they help more than most people realise.
+- Less fried food — and measure the oil instead of pouring freely.
+- More water, less soft drink — soft drinks add salt and sugar both.
 
 This is general information, not medical advice — please check with your doctor for your own plan.`;
 
-const KIDS_GUIDE = `**Food for kids — lunchbox and everyday ideas:**
+const KIDS_GUIDE = `Food for kids — lunchbox and everyday ideas:
 
-- **Roti roll with egg or chicken** — easy to carry and filling.
-- **A small box of fruit** — banana, apple, or grapes.
-- **Yogurt or milk** — calcium for growing bones.
-- **Chana chaat or boiled egg** — protein that keeps them full at school.
-- **Nuts and dates** — a small handful as a snack.
+- Roti roll with egg or chicken — easy to carry and filling.
+- A small box of fruit — banana, apple, or grapes.
+- Yogurt or milk — calcium for growing bones.
+- Chana chaat or boiled egg — protein that keeps them full at school.
+- Nuts and dates — a small handful as a snack.
 
 Kids need energy, so don't cut their food back — just keep the sugary snacks and soft drinks occasional.
 
 For a child with a medical condition, please ask your doctor first.`;
 
-const PREGNANCY_GUIDE = `**Eating during pregnancy — general guidance:**
+const PREGNANCY_GUIDE = `Eating during pregnancy — general guidance:
 
-- **Fresh, well-cooked food** — daal, roti, vegetables, egg, and milk are all good everyday foods.
-- **Wash fruit and vegetables well** — and drink boiled or clean water.
-- **Avoid raw or undercooked food** — meat, eggs, and fish should be fully cooked.
-- **Small, frequent meals** — they help with nausea and acidity.
-- **Milk and yogurt** — calcium matters, and they are easy to digest.
+- Fresh, well-cooked food — daal, roti, vegetables, egg, and milk are all good everyday foods.
+- Wash fruit and vegetables well — and drink boiled or clean water.
+- Avoid raw or undercooked food — meat, eggs, and fish should be fully cooked.
+- Small, frequent meals — they help with nausea and acidity.
+- Milk and yogurt — calcium matters, and they are easy to digest.
 
 This is general information only — please ask your doctor about anything you are unsure of.`;
 
-const BUDGET_GUIDE = `**Healthy food on a tight budget:**
+const BUDGET_GUIDE = `Healthy food on a tight budget:
 
-- **Daal, chana, and beans** — the cheapest protein there is.
-- **Eggs** — cheap, filling, and full of protein.
-- **Seasonal vegetables** — whatever is in season is cheapest and freshest.
-- **Bananas and seasonal fruit** — the cheapest fruit, and genuinely good for you.
-- **Roti over bread** — whole wheat roti is cheaper and better than white bread.
+- Daal, chana, and beans — the cheapest protein there is.
+- Eggs — cheap, filling, and full of protein.
+- Seasonal vegetables — whatever is in season is cheapest and freshest.
+- Bananas and seasonal fruit — the cheapest fruit, and genuinely good for you.
+- Roti over bread — whole wheat roti is cheaper and better than white bread.
 
 Healthy eating doesn't need expensive food — daal, roti, sabzi, and eggs are the cheapest good meals there are.
 
 What is your usual monthly food budget like?`;
 
-const SICK_GUIDE = `**What to eat when you are sick — general guidance:**
+const SICK_GUIDE = `What to eat when you are sick — general guidance:
 
-- **Plenty of fluids** — water, soup, and nimbu pani. Don't let yourself get dehydrated.
-- **Khichdi with yogurt** — gentle, easy to digest, and filling.
-- **Plain toast or plain rice** — light and easy on the stomach.
-- **Soup with vegetables** — warm and soothing.
-- **Small amounts, often** — a little at a time beats a big meal.
+- Plenty of fluids — water, soup, and nimbu pani. Don't let yourself get dehydrated.
+- Khichdi with yogurt — gentle, easy to digest, and filling.
+- Plain toast or plain rice — light and easy on the stomach.
+- Soup with vegetables — warm and soothing.
+- Small amounts, often — a little at a time beats a big meal.
 
 Avoid very spicy, fried, or heavy food while you are recovering.
 
 See a doctor quickly if the fever lasts, breathing is hard, or you can't keep fluids down.`;
 
-const WORKOUT_GUIDE = `**Eating around a workout:**
+const WORKOUT_GUIDE = `Eating around a workout:
 
-- **Before a workout** — a banana, toast, or a small bowl of oats. Light and easy to digest.
-- **After a workout** — egg, chicken, daal, or yogurt. Protein helps recovery.
-- **Water, always** — drink before, during, and after.
-- **Skip heavy fried food before exercise** — it sits badly.
+- Before a workout — a banana, toast, or a small bowl of oats. Light and easy to digest.
+- After a workout — egg, chicken, daal, or yogurt. Protein helps recovery.
+- Water, always — drink before, during, and after.
+- Skip heavy fried food before exercise — it sits badly.
 
 Food and exercise work together — neither does the job alone.
 
 Do you work out in the morning or the evening?`;
 
-const PACKAGED_SNACKS_GUIDE = `**Packaged snacks in the market — what they are and what to watch for:**
+const PACKAGED_SNACKS_GUIDE = `Packaged snacks in the market — what they are and what to watch for:
 
-Chips, namkeen, biscuits, instant noodles, chocolates, candies, packaged juices, energy drinks, and bakery items are all **packaged snacks** — made to last on a shelf, so they are usually high in salt, sugar, or oil, and low in nutrients.
+Chips, namkeen, biscuits, instant noodles, chocolates, candies, packaged juices, energy drinks, and bakery items are all packaged snacks — made to last on a shelf, so they are usually high in salt, sugar, or oil, and low in nutrients.
 
-**What to watch for:**
-- **Salt** — chips and namkeen are the worst for this.
-- **Sugar** — biscuits, chocolates, candies, and packaged juices are mostly sugar.
-- **Oil and fat** — instant noodles and fried snacks are cooked in a lot of oil.
-- **Additives** — colours and flavourings are usually safe in small amounts, but they add nothing good.
+What to watch for:
+- Salt — chips and namkeen are the worst for this.
+- Sugar — biscuits, chocolates, candies, and packaged juices are mostly sugar.
+- Oil and fat — instant noodles and fried snacks are cooked in a lot of oil.
+- Additives — colours and flavourings are usually safe in small amounts, but they add nothing good.
 
-**What to check on the label:**
-- **Ingredients, in order** — the first ingredient is the main one.
-- **Per 100 g** — compare salt and sugar between two packs.
-- **Expiry date** — never eat expired snacks.
+What to check on the label:
+- Ingredients, in order — the first ingredient is the main one.
+- Per 100 g — compare salt and sugar between two packs.
+- Expiry date — never eat expired snacks.
 
-**Better daily snacks:** roasted chana, fruit, a handful of nuts, yogurt, or popcorn — they fill you up properly.
+Better daily snacks: roasted chana, fruit, a handful of nuts, yogurt, or popcorn — they fill you up properly.
 
 How often do you eat packaged snacks?`;
 
-const MARKET_GUIDE = `**Daily food from the market — unpackaged, fresh food:**
+const MARKET_GUIDE = `Daily food from the market — unpackaged, fresh food:
 
-- **Street food** — tasty and fresh when made in front of you, but often oily and salty. Eat it fresh, from a clean place, in small portions.
-- **Bakery bread and naan** — fresh from the tandoor is fine, but it is white flour, so pair it with egg, daal, or curry — not just butter and jam.
-- **Fresh market produce** — vegetables and fruit are cheapest and freshest in season. Wash them well before eating.
-- **Loose lentils, rice, and spices** — check for stones, dampness, and a bad smell before you buy. Buy small amounts and store them dry.
-- **Dahi from the shop** — buy it fresh, keep it cold, and finish it the same day.
-- **Milk from the shop** — always boil it well before drinking, and never drink it raw.
+- Street food — tasty and fresh when made in front of you, but often oily and salty. Eat it fresh, from a clean place, in small portions.
+- Bakery bread and naan — fresh from the tandoor is fine, but it is white flour, so pair it with egg, daal, or curry — not just butter and jam.
+- Fresh market produce — vegetables and fruit are cheapest and freshest in season. Wash them well before eating.
+- Loose lentils, rice, and spices — check for stones, dampness, and a bad smell before you buy. Buy small amounts and store them dry.
+- Dahi from the shop — buy it fresh, keep it cold, and finish it the same day.
+- Milk from the shop — always boil it well before drinking, and never drink it raw.
 
 Fresh food is great — it just needs a little more care than packaged food.`;
 
-const EATING_OUT_GUIDE = `**Hotel and restaurant food — enjoying it without overdoing it:**
+const EATING_OUT_GUIDE = `Hotel and restaurant food — enjoying it without overdoing it:
 
-- **Grilled over fried** — tikka, BBQ, and grilled chicken are lighter than fried items.
-- **Biryani and karahi** — tasty, but hotel versions use more oil and salt than homemade. A small portion with salad and raita is the way.
-- **Fast food** — burgers, fries, pizza, and shawarma are fine occasionally, but they are salty, oily, and low in nutrients.
-- **Continental dishes** — grilled is good, creamy sauces and fried items are heavy.
-- **Chai and doodh patti** — lovely, but ask for less sugar.
+- Grilled over fried — tikka, BBQ, and grilled chicken are lighter than fried items.
+- Biryani and karahi — tasty, but hotel versions use more oil and salt than homemade. A small portion with salad and raita is the way.
+- Fast food — burgers, fries, pizza, and shawarma are fine occasionally, but they are salty, oily, and low in nutrients.
+- Continental dishes — grilled is good, creamy sauces and fried items are heavy.
+- Chai and doodh patti — lovely, but ask for less sugar.
 
-**Simple rules for eating out:** small portions, salad with the meal, water instead of soft drinks, and share the dessert.
+Simple rules for eating out: small portions, salad with the meal, water instead of soft drinks, and share the dessert.
 
 Do you eat out often, or only on special occasions?`;
 
-const CALORIES_GUIDE = `**Calories — roughly, not exactly:**
+const CALORIES_GUIDE = `Calories — roughly, not exactly:
 
-These are **rough ranges**, not exact numbers — size, recipe, and portion change them a lot:
+These are rough ranges, not exact numbers — size, recipe, and portion change them a lot:
 
 - A medium roti — roughly 70–100 calories
 - A small plate of cooked white rice — roughly 150–250 calories
@@ -2845,7 +2848,7 @@ These are **rough ranges**, not exact numbers — size, recipe, and portion chan
 - One glass of milk — roughly 120–160 calories
 - One slice of bread — roughly 70–100 calories
 
-**The honest point:** exact calories matter less than the portion. A small plate of an everyday food beats a big plate of a treat — and plain, home-cooked food is almost always lighter than packaged or fried food.
+The honest point: exact calories matter less than the portion. A small plate of an everyday food beats a big plate of a treat — and plain, home-cooked food is almost always lighter than packaged or fried food.
 
 Want the rough range for a specific food? Just ask — for example, "how many calories in a roti?"`;
 
@@ -2874,7 +2877,7 @@ function caloriesAnswer(foods: { entry: FoodEntry }[]): string {
     const range = CALORIE_RANGES[named.display.toLowerCase()];
     if (range) {
       return [
-        `**${named.display} — roughly:** a medium serving is ${range}.`,
+        `${named.display} — roughly: a medium serving is ${range}.`,
         "",
         "That's a rough range, not an exact number — size, recipe and portion change it a lot.",
         "",
@@ -2922,7 +2925,7 @@ function substitutionAnswer(foods: { entry: FoodEntry }[]): string {
     const hit = SUBSTITUTIONS.find((s) => s.keys.includes(key) || named.names.some((n) => s.keys.includes(n)));
     if (hit) {
       return [
-        `**Instead of ${named.display.toLowerCase()}:** ${hit.text}`,
+        `Instead of ${named.display.toLowerCase()}: ${hit.text}`,
         "",
         "Want a swap for something else? Just ask.",
       ].join("\n");
@@ -2935,7 +2938,7 @@ function substitutionAnswer(foods: { entry: FoodEntry }[]): string {
     ].join("\n");
   }
   return [
-    "**Common food swaps:**",
+    "Common food swaps:",
     "",
     "- Sugar — use half, or dates in cooking.",
     "- Salt — lemon, green chilli, and fresh coriander.",
@@ -3143,7 +3146,7 @@ export function answerLocally(question: string, ctx?: { barcodeData?: LocalBarco
       if (hits.length > 0 && !isCategory) {
         // A known generic food: explain generally, never certify.
         if (certMatch) return genericCertReply(hits[0].display.toLowerCase(), certMatch[1] as "halal" | "vegetarian" | "vegan");
-        return foodAnswer(hits[0], "**Allergens:** I can't confirm allergens for a specific packet without the label — check the ingredients list for bold allergen words, or send a photo of the label.");
+        return foodAnswer(hits[0], "Allergens: I can't confirm allergens for a specific packet without the label — check the ingredients list for bold allergen words, or send a photo of the label.");
       }
       if (isCategory) {
         const foodHits = findFoods(norm);
@@ -3202,7 +3205,7 @@ export function answerLocally(question: string, ctx?: { barcodeData?: LocalBarco
     if (foods.length > 0) {
       const e = foods[0].entry;
       return [
-        `**Storing ${e.display.toLowerCase()}:** keep it cool and covered, and use it while it is fresh.`,
+        `Storing ${e.display.toLowerCase()}: keep it cool and covered, and use it while it is fresh.`,
         "",
         "In general: keep cooked food in the fridge and eat it within a day or two, keep dry foods sealed and away from damp, and never taste food to check if it is safe.",
         "",
@@ -3211,7 +3214,7 @@ export function answerLocally(question: string, ctx?: { barcodeData?: LocalBarco
       ].join("\n");
     }
     return [
-      "**Storing food, in general:** keep cooked food in the fridge and eat it within a day or two, keep dry foods sealed and away from damp, and follow the date on the pack.",
+      "Storing food, in general: keep cooked food in the fridge and eat it within a day or two, keep dry foods sealed and away from damp, and follow the date on the pack.",
       "",
       "When in doubt, throw it out — smell and looks can't prove food is safe.",
       "",
@@ -3223,7 +3226,7 @@ export function answerLocally(question: string, ctx?: { barcodeData?: LocalBarco
     const extra = conditionLine(norm);
     const first = foodAnswer(foods[0].entry, extra || undefined);
     if (foods.length > 1) {
-      return `${first}\n\n**And ${foods[1].entry.display}:** ${foods[1].entry.blurb}`;
+      return `${first}\n\nAnd ${foods[1].entry.display}: ${foods[1].entry.blurb}`;
     }
     return first;
   }

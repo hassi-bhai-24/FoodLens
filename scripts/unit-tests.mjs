@@ -441,7 +441,8 @@ ok(answerLocally("What are these ingredients?")?.includes("Type the ingredients 
 ok(answerLocally("How do I store rice?")?.includes("Storing rice"), "local: storage guidance given");
 ok(answerLocally("Is mango good for diabetes?")?.includes("diabetes"), "local: diabetes condition note included");
 ok(answerLocally("Is daal healthy?") && !/\d/.test(answerLocally("Is daal healthy?")), "local: daal answer has no digits");
-ok(answerLocally("Is this biscuit healthy?") && !/\d/.test(answerLocally("Is this biscuit healthy?")), "local: biscuit answer has no digits");
+ok(answerLocally("Is this biscuit healthy?") && !/\d/.test((answerLocally("Is this biscuit healthy?") || "").replace(/per 100 g/g, "")), "local: biscuit answer has no digits except the per-100-g label unit");
+ok(((answerLocally("Is this biscuit healthy?") || "").match(/\d+/g) || []).every((d) => d === "100"), "local: the only digits in a biscuit answer are the 100 in per 100 g");
 ok(answerLocally("Is Coca-Cola healthy?") && !/\d/.test(answerLocally("Is Coca-Cola healthy?")), "local: cola answer has no digits");
 // Unknown / made-up brands: unverified, never certified.
 ok(answerLocally("Is Zorblox halal?")?.includes("I could not verify 'Zorblox'"), "local: unknown brand halal is unverified, exact wording");
@@ -515,6 +516,30 @@ const snackGuide = answerLocally("what snacks can I eat daily");
 ok(snackGuide?.includes("Packaged snacks") && snackGuide?.includes("label"), "local v2: packaged snacks guide covers labels");
 ok(answerLocally("what should I eat at a hotel?")?.includes("Hotel and restaurant food"), "local v2: eating-out guide given");
 ok(answerLocally("What should I buy at the market?")?.includes("market"), "local v2: market guide given");
+// Enriched packaged snacks (v2 fix): fuller answers, label checks, better swaps.
+const biscuitAns = answerLocally("are packaged biscuits healthy?");
+ok(biscuitAns?.includes("refined white flour") && biscuitAns?.includes("palm oil") && biscuitAns?.includes("roasted chana"), "snacks: biscuit answer names what is in it and a better swap");
+ok(biscuitAns?.includes("per 100 g"), "snacks: biscuit answer tells the reader to check sugar and salt per 100 g");
+const chipsAns = answerLocally("are chips bad for you?");
+ok(chipsAns?.includes("fried in oil") && chipsAns?.includes("roasted chana"), "snacks: chips answer names the oil and a crunchy swap");
+ok(answerLocally("is instant noodles healthy?")?.includes("flavour packet") && answerLocally("is instant noodles healthy?")?.includes("half the flavour packet"), "snacks: noodles answer covers the salty flavour packet and using half of it");
+ok(answerLocally("are digestive biscuits healthy?")?.includes("marketing"), "snacks: digestive biscuits answer says the healthy name is marketing");
+ok(answerLocally("are cream biscuits healthy?")?.includes("cream filling"), "snacks: cream biscuits answer names the sugary filling");
+ok(answerLocally("is packaged juice healthy?")?.includes("concentrate") && answerLocally("is packaged juice healthy?")?.includes("fruit drink"), "snacks: packaged juice answer covers concentrate and the fruit-drink trap");
+ok(answerLocally("are energy drinks healthy?")?.includes("crash"), "snacks: energy drinks answer covers the crash afterwards");
+ok(answerLocally("is namkeen healthy?")?.includes("whole packet"), "snacks: namkeen answer covers eating a whole packet");
+ok(answerLocally("is rusk healthy?")?.includes("twice-baked"), "snacks: rusk answer explains what rusk is");
+ok(answerLocally("is mathri healthy?")?.includes("ajwain"), "snacks: mathri answer names its ingredients");
+ok(answerLocally("are bakery items healthy?")?.includes("butter or oil"), "snacks: bakery items answer names what they are made from");
+ok(answerLocally("are granola bars healthy?")?.includes("candy bars with oats"), "snacks: granola bars answer calls out the sugar trap");
+ok(answerLocally("is chocolate healthy?")?.includes("milk chocolate") && answerLocally("is chocolate healthy?")?.includes("dark chocolate"), "snacks: chocolate answer separates milk and dark chocolate");
+// No bold markers anywhere in local answers — plain flowing text.
+ok(!/\*\*/.test(biscuitAns || ""), "snacks: biscuit answer has no bold markers");
+ok(!/\*\*/.test(chipsAns || "") && !/\*\*/.test(answerLocally("is instant noodles healthy?") || "") && !/\*\*/.test(answerLocally("are digestive biscuits healthy?") || ""), "snacks: chips, noodles and digestive biscuit answers have no bold markers");
+ok(!/\*\*/.test(bananaAns || "") && !/\*\*/.test(answerLocally("pros and cons of mango") || "") && !/\*\*/.test(answerLocally("Is hotel biryani healthy?") || ""), "snacks: banana, mango pros/cons and hotel biryani answers have no bold markers");
+ok(!/\*\*/.test(answerLocally("what snacks can I eat daily") || "") && !/\*\*/.test(answerLocally("I have diabetes, what can I eat?") || ""), "snacks: packaged-snacks and diabetes guides have no bold markers");
+ok(!/\*\*/.test(answerLocally("why?", { history: [{ role: "user", text: "Is banana healthy?" }, { role: "assistant", text: bananaAns || "" }] }) || "") && !/\*\*/.test(answerLocally("Is chicken or rice healthier?") || ""), "snacks: why-follow-up and comparison answers have no bold markers");
+ok(mangoPros?.includes("Pros:") && mangoPros?.includes("Cons:") && !/\*\*/.test(mangoPros || ""), "snacks: pros and cons answer keeps plain Pros/Cons lists with no bold");
 // Roman Urdu mixes.
 ok(answerLocally("Mujhe wazan kam karna hai, kya khaun?")?.includes("Losing weight"), "local v2: Roman Urdu weight loss answered");
 ok(answerLocally("kela or seb, konsa behtar hai?")?.includes("Banana") && answerLocally("kela or seb, konsa behtar hai?")?.includes("Apple"), "local v2: Roman Urdu comparison covers both foods");
