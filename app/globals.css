@@ -68,9 +68,17 @@ h1,h2,h3{letter-spacing:-.02em;line-height:1.2}
 .app{display:flex;height:100dvh;overflow:hidden}
 
 /* ---- Sidebar: slim, quiet grey ---- */
-.sidebar{width:260px;flex-shrink:0;background:var(--sidebar-bg);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:12px;gap:8px}
+.sidebar{width:260px;flex-shrink:0;background:var(--sidebar-bg);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:12px;gap:8px;transition:width .28s ease,padding .28s ease,border-color .28s ease}
+@media (min-width:721px){
+  /* Desktop: closing the sidebar collapses it to nothing (animated);
+     the hamburger in the header reopens it. */
+  .sidebar.collapsed{width:0;padding-left:0;padding-right:0;border-right-color:transparent;overflow:hidden}
+}
 .sidebar-close{display:none}
 .sidebar-backdrop{display:none}
+/* Plain icon buttons in the chat list — no boxes around the icons. */
+.icon-btn{background:none;border:0;padding:6px 8px;border-radius:8px;color:var(--muted);line-height:1}
+.icon-btn:hover{background:var(--surface2);color:var(--text)}
 .logo{font-weight:700;letter-spacing:.02em;font-size:18px;padding:4px 8px}
 .logo span{color:var(--accent)}
 .chat-item{flex:1;text-align:left;background:none;border:0;padding:8px 10px;border-radius:10px;font-size:14px;line-height:1.45;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -111,9 +119,13 @@ h1,h2,h3{letter-spacing:-.02em;line-height:1.2}
 
 /* ---- Composer: bottom-centred, rounded card, send inside ---- */
 .composer{max-width:768px;width:100%;margin:0 auto;padding:8px 16px 16px}
-.composer-box{border:1px solid var(--border);background:var(--surface);border-radius:28px;padding:12px 12px 8px;box-shadow:var(--shadow-sm)}
-.composer-box:focus-within{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),var(--shadow-sm)}
+/* One clean input box: the wrapper is the only border. Focus is a calm
+   neutral darkening with a slow transition — no accent snap, no second
+   ring from the textarea inside it. */
+.composer-box{border:1px solid var(--border);background:var(--surface);border-radius:28px;padding:12px 12px 8px;box-shadow:var(--shadow-sm);transition:border-color .2s ease,box-shadow .2s ease}
+.composer-box:focus-within{border-color:var(--muted);box-shadow:var(--shadow-sm)}
 .composer-box textarea{width:100%;background:transparent;border:0;outline:none;resize:none;min-height:44px;max-height:160px;font-size:16px;line-height:1.5;padding:4px 8px}
+.composer-box textarea:focus{border:0;outline:none;box-shadow:none}
 .composer-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .composer-row .btn:not(.secondary){margin-left:auto}
 .composer-row .btn.secondary{border-color:transparent;background:transparent}
@@ -147,6 +159,8 @@ input[type="text"]:focus,input[type="password"]:focus,input[type="search"]:focus
 .markdown code{background:var(--surface2);padding:1px 6px;border-radius:6px;font-size:.9em}
 .dots span{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--muted);margin-right:4px;animation:blink 1.2s infinite}
 .dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}
+/* Typing dots inside an assistant bubble: same animation, inline. */
+.bubble .dots{display:inline-flex;align-items:center;padding:6px 2px}
 @keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
 .cursor{display:inline-block;width:8px;height:1em;background:var(--accent);vertical-align:text-bottom;animation:blink 1s infinite}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
@@ -159,7 +173,8 @@ dialog h2{margin-top:0}
 @media (max-width:720px){
   .sidebar{position:fixed;top:var(--sidebar-top,0px);z-index:40;height:calc(100dvh - var(--sidebar-top,0px));transform:translateX(-100%);transition:transform .2s;overflow-y:auto}
   .sidebar.open{transform:none}
-  .sidebar-close{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:8px 12px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:999px;font-weight:700}
+  .sidebar-close{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:8px 12px;background:none;color:var(--muted);border:0;font-weight:700}
+  .sidebar-close:hover{background:var(--surface2);color:var(--text)}
   .sidebar-backdrop{display:block;position:fixed;inset:0;top:var(--sidebar-top,0px);background:rgba(0,0,0,.45);z-index:35}
   .tagline{display:none}
   .composer-row .btn{padding:7px 10px;font-size:13px}

@@ -60,6 +60,25 @@ export default function Home() {
   const [pendingConfirm, setPendingConfirm] = useState<{ chatId: string; transcription: string; question: string } | null>(null);
   const [confirmDraft, setConfirmDraft] = useState("");
   const abortRef = useRef<AbortController | null>(null);
+  // Local-answer animation (no-key path): the typing pause and the
+  // word-by-word reveal run on timers. The refs let Stop cancel them
+  // and let the unmount cleanup clear a pending timer.
+  const localTimerRef = useRef<number | null>(null);
+  const localResolveRef = useRef<(() => void) | null>(null);
+  const localStopRef = useRef(false);
+
+  // Stop whatever is generating: abort the cloud fetch and cancel the
+  // local typing/reveal animation. The reveal promise resolves so the
+  // local branch can save what has been shown so far.
+  const stopReply = useCallback(() => {
+    abortRef.current?.abort();
+    localStopRef.current = true;
+    if (localTimerRef.current !== null) {
+      window.clearTimeout(localTimerRef.current);
+      localTimerRef.current = null;
+    }
+    localResolveRef.current?.();
+  }, []);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const cameraRef = useRef<HTMLInputElement | null>(null);
@@ -88,7 +107,17 @@ export default function Home() {
   useEffect(() => {
     loadAll();
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    return () => {
+      if (localTimerRef.current !== null) window.clearTimeout(localTimerRef.current);
+    };
   }, [loadAll]);
+
+  // Desktop starts with the sidebar open; mobile starts closed. Done
+  // after mount so the first render matches the server (no hydration
+  // mismatch) and the sidebar simply slides in on wide screens.
+  useEffect(() => {
+    if (window.innerWidth > 720) setSidebarOpen(true);
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme === "system" ? (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark") : settings.theme;
@@ -171,10 +200,52 @@ export default function Home() {
       const prevTurns = history.slice(0, -1).slice(-6).map((m) => ({ role: m.role, text: m.text }));
       const localText = guard ? guard.text : answerLocally(lastUserText, { barcodeData: opts?.barcodeData, history: prevTurns });
       if (localText) {
-        const doneMsg: ChatMessage = { id: crypto.randomUUID(), role: "assistant", text: localText, createdAt: Date.now(), status: "done", model: "FOODLENS local answers" };
+        // Local answers are instant, so animate them like a real chatbot:
+        // typing dots first (~0.7s), then the answer revealed word by word
+        // with a blinking cursor. The cloud path below is untouched.
+        setGenerating(true);
+        localStopRef.current = false;
+        const assistant: ChatMessage = { id: crypto.randomUUID(), role: "assistant", text: "", createdAt: Date.now(), status: "typing", model: "FOODLENS local answers" };
+        const working: Chat = { ...chat, messages: [...history, assistant] };
+        setChats((prev) => prev.map((c) => (c.id === chat.id ? working : c)));
+        const updateLocal = (text: string, status: "typing" | "streaming" | "done") => {
+          setChats((prev) => prev.map((c) => (c.id === chat.id ? { ...c, messages: c.messages.map((m) => (m.id === assistant.id ? { ...m, text, status } : m)) } : c)));
+        };
+        // Split keeping the whitespace so the reveal rebuilds the exact text.
+        const parts = localText.split(/(\s+)/).filter((p) => p.length > 0);
+        let shown = "";
+        let partIdx = 0;
+        let typingTicks = 0;
+        const TYPING_TICKS = 20; // 20 x 35ms ≈ 0.7s of typing dots
+        await new Promise<void>((resolve) => {
+          localResolveRef.current = resolve;
+          const tick = () => {
+            if (localStopRef.current) { resolve(); return; }
+            if (typingTicks < TYPING_TICKS) {
+              typingTicks++;
+              localTimerRef.current = window.setTimeout(tick, 35);
+              return;
+            }
+            const chunk = parts.slice(partIdx, partIdx + 2).join("");
+            partIdx += 2;
+            shown += chunk;
+            updateLocal(shown, "streaming");
+            if (partIdx >= parts.length) { resolve(); return; }
+            localTimerRef.current = window.setTimeout(tick, 35);
+          };
+          localTimerRef.current = window.setTimeout(tick, 35);
+        });
+        localResolveRef.current = null;
+        localTimerRef.current = null;
+        const stopped = localStopRef.current;
+        // Stopped before a word appeared: the answer was already computed,
+        // so deliver it whole rather than leaving an empty bubble.
+        const finalText = stopped && shown === "" ? localText : stopped ? shown : localText;
+        const doneMsg: ChatMessage = { ...assistant, text: finalText, status: "done" };
         const finalChat: Chat = { ...chat, messages: [...history, doneMsg], title: chat.messages.length <= 1 ? (history[0]?.text.slice(0, 48) || "New chat") : chat.title };
         await saveChat(finalChat);
-        return { sent: true, text: localText, model: "FOODLENS local answers" };
+        setGenerating(false);
+        return { sent: true, text: finalText, model: "FOODLENS local answers" };
       }
       // No local answer for this question: fall through to the cloud
       // call, which returns the usual "no key" message when no key
@@ -435,12 +506,12 @@ export default function Home() {
   return (
     <div className="app" style={{ "--sidebar-top": `${sidebarTop}px` } as React.CSSProperties}>
       {sidebarOpen && <div className="sidebar-backdrop" aria-hidden="true" onClick={() => setSidebarOpen(false)} />}
-      <aside className={`sidebar ${sidebarOpen ? "open" : ""}`} aria-label="Chat history">
+      <aside className={`sidebar ${sidebarOpen ? "open" : "collapsed"}`} aria-label="Chat history">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <div className="logo">FOOD<span>LENS</span></div>
           <button type="button" className="sidebar-close" aria-label="Close history" onClick={() => setSidebarOpen(false)}>✕</button>
         </div>
-        <button className="btn" onClick={() => { const c = newChat(); setChats((p) => [c, ...p]); setActiveId(c.id); setSidebarOpen(false); }}>+ New chat</button>
+        <button className="btn" onClick={() => { const c = newChat(); setChats((p) => [c, ...p]); setActiveId(c.id); if (window.innerWidth <= 720) setSidebarOpen(false); }}>+ New chat</button>
         <input type="search" placeholder="Search chats" aria-label="Search chats" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
         {loadError ? (
           <div className="panel error" role="alert">
@@ -453,23 +524,23 @@ export default function Home() {
           <ul style={{ listStyle: "none", margin: 0, padding: 0, overflowY: "auto" }}>
             {filtered.map((c) => (
               <li key={c.id} style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 4px" }}>
-                <button className={`chat-item ${c.id === activeId ? "active" : ""}`} style={{ flex: 1 }} onClick={() => { setActiveId(c.id); setSidebarOpen(false); }}>
+                <button className={`chat-item ${c.id === activeId ? "active" : ""}`} style={{ flex: 1 }} onClick={() => { setActiveId(c.id); if (window.innerWidth <= 720) setSidebarOpen(false); }}>
                   {c.title}
                 </button>
-                <button aria-label={`Rename chat ${c.title}`} onClick={async () => { const name = window.prompt("Rename chat", c.title); if (name && name.trim()) await saveChat({ ...c, title: name.trim().slice(0, 60) }); }}>✎</button>
-                <button aria-label={`Delete chat ${c.title}`} onClick={async () => { await deleteChat(c.id); setChats((p) => p.filter((x) => x.id !== c.id)); if (activeId === c.id) setActiveId(null); }}>✕</button>
+                <button type="button" className="icon-btn" aria-label={`Rename chat ${c.title}`} onClick={async () => { const name = window.prompt("Rename chat", c.title); if (name && name.trim()) await saveChat({ ...c, title: name.trim().slice(0, 60) }); }}>✎</button>
+                <button type="button" className="icon-btn" aria-label={`Delete chat ${c.title}`} onClick={async () => { await deleteChat(c.id); setChats((p) => p.filter((x) => x.id !== c.id)); if (activeId === c.id) setActiveId(null); }}>✕</button>
               </li>
             ))}
           </ul>
         )}
         <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
-          <button className="btn secondary" onClick={() => { setShowSettings(true); setSidebarOpen(false); loadModels(); }}>Settings</button>
+          <button className="btn secondary" onClick={() => { setShowSettings(true); if (window.innerWidth <= 720) setSidebarOpen(false); loadModels(); }}>Settings</button>
         </div>
       </aside>
 
       <main className="main">
         <header ref={headerRef} className="topbar">
-          <button className="btn secondary" aria-label="Open history" aria-expanded={sidebarOpen} onClick={() => setSidebarOpen((v) => !v)}>☰</button>
+          <button className="btn secondary" aria-label={sidebarOpen ? "Close history" : "Open history"} aria-expanded={sidebarOpen} onClick={() => setSidebarOpen((v) => !v)}>☰</button>
           <strong>FOODLENS</strong>
           <span className="tagline">Chat before you eat unhealthy.</span>
           <span className="topbar-note" style={{ color: "var(--muted)", fontSize: 12 }}>General food information, not medical advice. Always check allergens on the real label.</span>
@@ -497,11 +568,13 @@ export default function Home() {
                     <img key={img.id} className="thumbs" src={img.dataUrl} alt={img.name} onClick={() => setLightbox(img.dataUrl)} />
                   ))}
                   {m.text ? <Markdown text={m.text} /> : null}
+                  {m.status === "typing" && <span className="dots" aria-label="FOODLENS is typing"><span /><span /><span /></span>}
                   {m.role === "assistant" && idx > 0 && active.messages[idx - 1].role === "user" && (active.messages[idx - 1].images?.length || 0) > 0 && (
                     <p style={{ fontSize: 12, color: "var(--muted)", borderTop: "1px solid var(--border)", paddingTop: 6, marginTop: 8 }}>Please verify against the real label</p>
                   )}
                   {m.status === "streaming" && <span className="cursor" aria-hidden="true" />}
                 </div>
+                {m.status !== "typing" && m.status !== "streaming" && (
                 <div className="meta">
                   <button onClick={() => navigator.clipboard.writeText(m.text).catch(() => undefined)}>Copy</button>
                   {m.role === "assistant" && (
@@ -543,6 +616,7 @@ export default function Home() {
                     <button onClick={() => { setEditingId(m.id); setInput(m.text); }}>Edit &amp; resend</button>
                   )}
                 </div>
+                )}
               </article>
             ))}
 
@@ -599,7 +673,7 @@ export default function Home() {
               <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
               <span style={{ flex: 1 }} />
               {generating ? (
-                <button type="button" className="btn" onClick={() => abortRef.current?.abort()}>Stop</button>
+                <button type="button" className="btn" onClick={stopReply}>Stop</button>
               ) : (
                 <button type="submit" className="btn" disabled={!input.trim() && attachments.length === 0} aria-label="Send message">Send</button>
               )}

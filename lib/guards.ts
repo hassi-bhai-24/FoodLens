@@ -180,7 +180,7 @@ function safety(text: string): GuardResult | null {
   ) {
     return {
       kind: "safety",
-      text: "When in doubt, throw it out. Smell and appearance can't prove expired food is safe. Don't taste food to check it — if it's past its date, stored wrongly, or you're unsure, it's safer not to eat it.",
+      text: "No, I wouldn't eat expired food. Once food is past its date I can't tell from smell or looks whether it's safe, and tasting it to check isn't worth the risk. If I'm not sure how it was stored or it's past the date, I'd throw it out.",
     };
   }
   if (

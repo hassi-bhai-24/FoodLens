@@ -2215,6 +2215,11 @@ function recipeFor(entry: FoodEntry): Recipe | null {
   for (const name of entry.names) {
     if (RECIPES[name]) return RECIPES[name];
   }
+  // A dish entry ("Chana chaat") whose recipe is keyed by its main
+  // ingredient ("chickpeas") — match by the recipe title instead.
+  for (const r of Object.values(RECIPES)) {
+    if (r.title.toLowerCase().startsWith(key)) return r;
+  }
   return null;
 }
 
@@ -2256,73 +2261,252 @@ function hashStr(s: string): number {
   return h;
 }
 
-const OPENERS = ["Short answer: ", "In short: ", "The honest take: ", "Quick answer: "];
-const GOOD_LABELS = ["What's good: ", "The good side: ", "Why it's good: "];
-const WATCH_LABELS = ["Watch out for: ", "The catch: ", "Be careful about: "];
-const TIP_LABELS = ["How to enjoy it: ", "Best way to have it: ", "My suggestion: "];
 const CLOSERS = [
   "Do you usually have it with roti or rice?",
   "Want me to compare it with something else?",
   "Do you eat it often?",
   "Want a quick recipe with it?",
-  "Shall I tell you the best way to have it?",
+  "Want another idea for it?",
 ];
+
+/** Odd pros/cons fragments that need a one-off rewrite before they can join a sentence. */
+const FRAGMENT_FIX: Record<string, string> = {
+  "none for health": "there's nothing good in it for health",
+  digestion: "it helps digestion",
+  alertness: "it keeps me alert",
+  "fresh breath": "it freshens my breath",
+  "high smoke point": "it has a high smoke point",
+  "wash well before eating": "I'd need to wash it well before eating",
+  "wash well — they are often sprayed": "I'd need to wash it well — it's often sprayed",
+  "soak them first": "I'd soak them first",
+  "watch the ghee on top": "the ghee on top",
+  "take time to cook": "it takes time to cook",
+  "no cooking needed": "it needs no cooking",
+  "too much can bother the stomach": "too much of it can bother the stomach",
+  "sweet taste": "it tastes sweet",
+  "good taste": "it tastes good",
+  "salty taste": "it tastes salty",
+  "fruity taste": "it tastes fruity",
+  "neutral taste": "it tastes neutral",
+  "still fat": "it's still fat",
+};
+
+/** Words that are an adjective or a noun depending on context ("fried", "low", "sweet"). */
+const ADJ_OR_NOUN = new Set([
+  "fried", "grilled", "plain", "strong", "fatty", "white", "low", "high", "sweet", "salty",
+  "creamy", "hard", "rich", "light", "natural", "good", "fruity", "starchy", "bitter",
+  "processed", "spiced", "crunchy", "crispy", "soft", "thick", "thin", "dry", "oily",
+  "spicy", "mild", "dark", "fresh", "raw", "warm", "cold", "hot", "chewy", "smooth",
+  "tangy", "sour", "smoky", "nutty", "fluffy", "flaky", "airy", "dense", "heavy", "lean",
+  "addictive", "filling", "refreshing", "hydrating", "energising", "calming", "soothing",
+  "gentle", "quick", "easy", "handy", "convenient", "simple", "slow", "fast",
+  "versatile", "neutral", "warming", "cooling", "relaxing", "festive", "bad",
+  "cheap", "expensive",
+]);
+
+/** Verb-led fragments ("gives quick energy", "keeps you full") — the clause starts with "it". */
+const VERB_LED = new Set([
+  "gives", "give", "has", "have", "keeps", "keep", "helps", "help", "makes", "make",
+  "adds", "add", "goes", "go", "tastes", "taste", "fills", "fill", "pairs", "pair",
+  "spreads", "spread", "does", "do", "takes", "take", "comes", "come", "provides", "provide",
+  "contains", "contain", "offers", "offer", "works", "work", "absorbs", "absorb", "soaks",
+  "soak", "sticks", "stick", "stains", "stain", "must", "can", "could", "will", "would",
+  "is", "are", "was", "were", "means", "mean", "shrinks", "shrink", "loses", "lose",
+  "raises", "raise", "lowers", "lower", "boosts", "boost", "calms", "cools", "heats",
+  "speeds", "slows", "blocks", "block", "supports", "support", "protects", "protect",
+  "fights", "fight", "cleans", "clean", "freshens", "freshen", "soothes", "soothe",
+  "relieves", "relieve", "eases", "ease", "reduces", "reduce", "increases", "increase",
+  "improves", "improve", "builds", "build", "strengthens", "strengthen", "repairs", "repair",
+  "hydrates", "hydrate", "energises", "energizes", "refreshes", "refresh",
+  "causes", "leads", "raises", "lowers", "boosts", "triggers", "worsens",
+  "decreases", "speeds", "slows",
+]);
+
+/** Marks a fragment that is already a full clause ("a small piece is a quick treat"). */
+const CLAUSE_MARKERS = [
+  " is ", " are ", " has ", " have ", " keeps ", " gives ", " adds ", " makes ",
+  " means ", " was ", " were ", " shrinks ", " loses ", " raises ", " lowers ",
+  " boosts ", " causes ", " leads ", " triggers ", " worsens ", " increases ",
+  " decreases ", " improves ", " reduces ", " speeds ", " slows ", " helps ",
+];
+
+/** Turn a short pros/cons fragment into a clause that fits a flowing sentence. */
+function fragmentClause(frag: string, kind: "pro" | "con"): string {
+  const f = frag.trim();
+  const fix = FRAGMENT_FIX[f.toLowerCase()];
+  if (fix) return fix;
+  const lower = f.toLowerCase();
+  if (CLAUSE_MARKERS.some((m) => lower.includes(m))) return firstPersonClause(f);
+  if (lower.startsWith("with ")) return fragmentClause(f.slice(5), kind);
+  if (lower.startsWith("so ")) return fragmentClause(f.slice(3), kind);
+  // A comma list that starts with an adjective ("light, fibre") is several
+  // qualities at once — render each part as its own clause.
+  const commaIdx = f.indexOf(", ");
+  if (commaIdx > 0) {
+    const firstPart = f.slice(0, commaIdx);
+    const firstWord = firstPart.split(/\s+/)[0].toLowerCase().replace(/[^a-z-]/g, "");
+    if (ADJ_OR_NOUN.has(firstWord) || /ing$/.test(firstWord)) {
+      const rest = f.slice(commaIdx + 2);
+      return `${fragmentClause(firstPart, kind)} and ${fragmentClause(rest, kind)}`;
+    }
+  }
+  const words = lower.split(/\s+/);
+  const first = words[0].replace(/[^a-z-]/g, "");
+  if (first === "a" || first === "an") return firstPersonClause(`it's ${f}`);
+  if (VERB_LED.has(first)) return firstPersonClause(`it ${f}`);
+  if (/^(easy|hard|fun|quick|ready|simple|tricky|tough) to /.test(lower)) return firstPersonClause(`it's ${f}`);
+  if (["very", "too", "quite", "really"].includes(first)) return firstPersonClause(`it's ${f}`);
+  // Past-participle phrases ("made from refined flour", "cooked in a lot of oil").
+  if (/^(made|cooked|fried|baked|boiled|grilled|roasted|steamed|prepared|processed|packaged|flavoured|flavored|sweetened|salted|seasoned|dried|smoked|cured|fermented|refined|filtered|pasteurised|pasteurized|homemade|fortified|enriched)\b/.test(lower)) {
+    return firstPersonClause(`it's ${f}`);
+  }
+  const second = (words[1] ?? "").replace(/[^a-z-]/g, "");
+  // A comparative ("lighter than ice cream") is a description, not a noun.
+  if (/er$/.test(first) && second === "than") return firstPersonClause(`it's ${f}`);
+  // An adverb before an adjective ("naturally sweet") is still a description.
+  if (/ly$/.test(first) && ADJ_OR_NOUN.has(second)) return firstPersonClause(`it's ${f}`);
+  const adjSecond =
+    ["in", "on", "not", "and", "if", "raw", "for", "with", "to", "from", "when", "—", "quick", "easy", "fun"].includes(second) ||
+    words.length === 1;
+  if (ADJ_OR_NOUN.has(first) && adjSecond) return firstPersonClause(`it's ${f}`);
+  return firstPersonClause(kind === "pro" ? `it's got ${f}` : `the ${f}`);
+}
+
+/** The bot talks about itself: "you" in a clause means the bot, so it becomes "me". */
+function firstPersonClause(clause: string): string {
+  return clause
+    .replace(/\byou can\b/g, "I can")
+    .replace(/\byou should\b/g, "I should")
+    .replace(/\byou\b/g, "me")
+    .replace(/\byour\b/g, "my");
+}
+
+/** Join a short list into a flowing phrase: "a, b and c". */
+function joinList(xs: string[]): string {
+  if (xs.length === 0) return "";
+  if (xs.length === 1) return xs[0];
+  if (xs.length === 2) return `${xs[0]} and ${xs[1]}`;
+  return `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`;
+}
+
+/** Verbs a tip can start with — the tip becomes "I {verb} ..." in the bot's own voice. */
+const TIP_VERBS = new Set([
+  "eat", "use", "add", "keep", "cook", "choose", "try", "check", "measure", "soak",
+  "sprinkle", "roast", "boil", "bake", "toast", "make", "serve", "go", "have", "take",
+  "drink", "cut", "mix", "blend", "chop", "slice", "steam", "shred", "stir-fry", "grill",
+  "fry", "shallow-fry", "dilute", "load", "pick", "ask", "enjoy", "buy", "store", "freeze",
+  "refrigerate", "pair", "top", "spread", "dip", "roll", "wrap", "heat", "simmer", "season",
+  "garnish", "squeeze", "grate", "mash", "whisk", "knead", "marinate", "drain", "rinse",
+  "peel", "scrub", "stir", "pour", "fill", "start", "begin", "swap", "replace", "limit",
+  "reduce", "snack", "plan", "prep", "aim", "focus", "stick", "watch", "look", "read",
+  "compare", "avoid", "wash", "walk", "taste", "skip", "share", "crumble",
+]);
+
+/** Turn a tip into first-person sentences the bot would say about itself. */
+function tipSentence(tip: string): string {
+  const sentences = tip.split(/(?<=\.)\s+/).map((s) => s.trim()).filter(Boolean);
+  return sentences
+    .map((s) => {
+      const lower = s.toLowerCase();
+      const firstWord = lower.split(/\s+/)[0];
+      let out: string;
+      if (lower.startsWith("or just ")) {
+        out = `Or, I'd just ${s.slice("Or just ".length)}`;
+      } else if (lower.startsWith("or ") && TIP_VERBS.has(lower.split(/\s+/)[1] ?? "")) {
+        out = `Or, I ${s.slice(3).charAt(0).toLowerCase()}${s.slice(4)}`;
+      } else if (lower.startsWith("on the label, ") && TIP_VERBS.has(lower.split(/\s+/)[3] ?? "")) {
+        out = `On the label, I ${s.slice("On the label, ".length).charAt(0).toLowerCase()}${s.slice("On the label, ".length + 1)}`;
+      } else if (TIP_VERBS.has(firstWord)) {
+        out = `I ${s.charAt(0).toLowerCase()}${s.slice(1)}`;
+      } else if (lower.startsWith("don't ")) {
+        out = `I wouldn't ${s.slice("Don't ".length)}`;
+      } else if (lower.startsWith("base for ")) {
+        out = `I'd use it as a base for ${s.slice("Base for ".length)}`;
+      } else if (/^(great|good|best)\b/.test(lower)) {
+        out = `It's ${s.charAt(0).toLowerCase()}${s.slice(1)}`;
+      } else {
+        out = `For me, ${s.charAt(0).toLowerCase()}${s.slice(1)}`;
+      }
+      return out
+        .replace(/\byou can\b/g, "I can")
+        .replace(/\bif you like\b/g, "if I like")
+        .replace(/\bif you are\b/g, "if I am")
+        .replace(/\bwhen you can\b/g, "when I can")
+        .replace(/\bwhen you are\b/g, "when I am")
+        .replace(/\bbefore you\b/g, "before I")
+        .replace(/\byou buy\b/g, "I buy")
+        .replace(/\byou\b/g, "me")
+        .replace(/\bdon't\b/g, "I don't")
+        .replace(/\byour\b/g, "my");
+    })
+    .join(" ");
+}
+
+/** Lowercase the first letter of a blurb so it can follow "For me, ". */
+function blurbLower(entry: FoodEntry): string {
+  let b = entry.blurb.trim();
+  if (!/[.!?]$/.test(b)) b += ".";
+  return b.charAt(0).toLowerCase() + b.slice(1);
+}
 
 function foodAnswer(entry: FoodEntry, extra?: string): string {
   const h = hashStr(entry.display);
-  const lines = [
-    `${OPENERS[h % OPENERS.length]}${entry.blurb}`,
-    "",
-    `${GOOD_LABELS[h % GOOD_LABELS.length]}${entry.pros.join("; ")}.`,
-    `${WATCH_LABELS[h % WATCH_LABELS.length]}${entry.cons.join("; ")}.`,
-    `${TIP_LABELS[h % TIP_LABELS.length]}${entry.tip}`,
+  const pros = entry.pros.map((p) => fragmentClause(p, "pro"));
+  const cons = entry.cons.map((c) => fragmentClause(c, "con"));
+  // "none for health" means there is nothing good to like — say so plainly.
+  const noPros = pros.length === 1 && pros[0] === "there's nothing good in it for health";
+  const good = noPros
+    ? " There's nothing good in it for health."
+    : pros.length > 0
+      ? ` I like it because ${joinList(pros)}.`
+      : "";
+  const bad = cons.length > 0 ? ` The downside is ${joinList(cons)}.` : "";
+  const parts = [
+    `For me, ${blurbLower(entry)}${good}${bad}`,
+    tipSentence(entry.tip),
   ];
-  if (entry.careful) lines.push(`Who should be careful: ${entry.careful}`);
-  if (extra) lines.push(extra);
-  lines.push("", CLOSERS[h % CLOSERS.length]);
-  return lines.join("\n");
+  if (entry.careful) parts.push(entry.careful);
+  if (extra) parts.push(extra);
+  return `${parts.join(" ")}\n\n${CLOSERS[h % CLOSERS.length]}`;
 }
 
-/** Pros and cons, spelled out, for "pros and cons of X" / "faide aur nuksan" questions. */
+/** Pros and cons, spelled out as flowing sentences, for "pros and cons of X" questions. */
 function prosConsAnswer(entry: FoodEntry): string {
-  const lines = [
-    `Pros and cons of ${entry.display}:`,
-    "",
-    "Pros:",
-    ...entry.pros.map((p) => `- ${p.charAt(0).toUpperCase()}${p.slice(1)}.`),
-    "",
-    "Cons:",
-    ...entry.cons.map((c) => `- ${c.charAt(0).toUpperCase()}${c.slice(1)}.`),
-    "",
-    `Best way to have it: ${entry.tip}`,
+  const pros = entry.pros.map((p) => fragmentClause(p, "pro"));
+  const cons = entry.cons.map((c) => fragmentClause(c, "con"));
+  const noPros = pros.length === 1 && pros[0] === "there's nothing good in it for health";
+  const good = noPros
+    ? " There's nothing good in it for health."
+    : pros.length > 0
+      ? ` I like it because ${joinList(pros)}.`
+      : "";
+  const bad = cons.length > 0 ? ` The downside is ${joinList(cons)}.` : "";
+  const parts = [
+    `You asked for the good and the bad, so here's how I see ${entry.display.toLowerCase()}. For me, ${blurbLower(entry)}${good}${bad}`,
+    tipSentence(entry.tip),
   ];
-  if (entry.careful) lines.push(`Who should be careful: ${entry.careful}`);
-  lines.push("", CLOSERS[hashStr(entry.display) % CLOSERS.length]);
-  return lines.join("\n");
+  if (entry.careful) parts.push(entry.careful);
+  return `${parts.join(" ")}\n\n${CLOSERS[hashStr(entry.display) % CLOSERS.length]}`;
 }
 
 /** "Why?" after an answer — the reasoning behind the verdict, in plain words. */
 function whyAnswer(entry: FoodEntry): string {
   const verdictWord = entry.verdict === "everyday" ? "an everyday food" : entry.verdict === "sometimes" ? "a sometimes food" : "a treat";
-  const lines = [
-    `Good question — here's why ${entry.display.toLowerCase()} counts as ${verdictWord}.`,
-    "",
-    `The good side: ${entry.pros.join("; ")}.`,
-    `The catch: ${entry.cons.join("; ")}.`,
-    "",
-    entry.careful ? `Who should be careful: ${entry.careful}` : `Best way to have it: ${entry.tip}`,
-    "",
-    CLOSERS[hashStr(entry.display) % CLOSERS.length],
+  const pros = entry.pros.map((p) => fragmentClause(p, "pro"));
+  const cons = entry.cons.map((c) => fragmentClause(c, "con"));
+  const good = pros.length > 0 ? ` because ${joinList(pros)}` : "";
+  const bad = cons.length > 0 ? ` The downside is ${joinList(cons)}.` : "";
+  const parts = [
+    `Good question. I think of ${entry.display.toLowerCase()} as ${verdictWord}${good}.${bad}`,
+    entry.careful ? entry.careful : tipSentence(entry.tip),
   ];
-  return lines.join("\n");
+  return `${parts.join(" ")}\n\n${CLOSERS[hashStr(entry.display) % CLOSERS.length]}`;
 }
 
 /** Render a recipe as answer lines (used by the cooking path and "yes" follow-ups). */
 function recipeLines(recipe: Recipe): string {
   return [
-    `${recipe.title}`,
-    "",
-    `You'll need: ${recipe.needs}.`,
+    `Here's how I'd make ${recipe.title} — you'll need ${recipe.needs}.`,
     "",
     ...recipe.steps.map((s, i) => `${i + 1}. ${s}`),
     "",
@@ -2332,22 +2516,27 @@ function recipeLines(recipe: Recipe): string {
 function compareAnswer(a: FoodEntry, b: FoodEntry): string {
   const rank: Record<Verdict, number> = { everyday: 2, sometimes: 1, treat: 0 };
   const better = rank[a.verdict] > rank[b.verdict] ? a : rank[b.verdict] > rank[a.verdict] ? b : null;
-  const lines = [
-    `Short answer: ${better ? `${better.display} is the better everyday choice of the two.` : `${a.display} and ${b.display} are roughly similar — both are fine in modest amounts.`}`,
-    "",
-    `${a.display}: ${a.blurb}`,
-    `${b.display}: ${b.blurb}`,
-    "",
-    `How to enjoy them: ${a.tip} ${b.tip}`,
-    "",
-    "Want me to compare either of them with something else?",
-  ];
-  return lines.join("\n");
+  const head = better
+    ? `I'd pick ${better.display.toLowerCase()} as the better everyday choice of the two.`
+    : `They're about the same to me — both are fine in modest amounts.`;
+  const tipB = tipSentence(b.tip).replace(/^For me, /, "");
+  const body = `${head} ${a.blurb} ${b.blurb} ${tipSentence(a.tip)} ${tipB}`;
+  return `${body}\n\nWant me to compare either of them with something else?`;
 }
 
-const LABEL_GUIDE = `Reading a food label — the quick version:
+/** "Would you eat X?" / "Will you eat X?" — answer as myself, using the food's verdict. */
+function personalEatAnswer(entry: FoodEntry): string {
+  const name = entry.display.toLowerCase();
+  const lead =
+    entry.verdict === "everyday"
+      ? `Yes, I'd happily eat ${name}.`
+      : entry.verdict === "sometimes"
+        ? `Yes, I'd eat ${name}, but only now and then.`
+        : `Honestly, I'd only have ${name} as an occasional treat, not every day.`;
+  return `${lead} ${foodAnswer(entry)}`;
+}
 
-Per 100 g is the fair comparison. Packets show nutrition per serving and per 100 g — always compare the per 100 g column, because serving sizes differ between brands.
+const LABEL_GUIDE = `Per 100 g is the fair comparison. Packets show nutrition per serving and per 100 g — always compare the per 100 g column, because serving sizes differ between brands.
 
 Sugar, salt and fat: lower is usually better. The traffic-light colours on some packs help: green means low, amber means medium, red means high.
 
@@ -2355,19 +2544,15 @@ Ingredients are listed heaviest first. The first ingredient is the biggest part 
 
 Allergens are in bold. Wheat, milk, egg, peanut, nuts, soy, sesame, fish and mustard must be highlighted in the ingredients list — check there first.
 
-Dates and storage: check the use-by date and how to store it. When in doubt about a date or a smell, throw it out.
+On dates and storage, I check the use-by date and how to store it. When in doubt about a date or a smell, I throw it out.
 
 Send a clear photo of the label, or type the ingredients, and I will go through them with you.`;
 
-const PLATE_GUIDE = `A balanced plate, in general:
-
-Fill about half the plate with vegetables or salad, about a quarter with protein (daal, chicken, egg, fish or paneer), and about a quarter with grains (roti or rice). Add a spoon of yogurt if you like.
+const PLATE_GUIDE = `For a balanced plate, I fill about half of it with vegetables or salad, about a quarter with protein (daal, chicken, egg, fish or paneer), and about a quarter with grains (roti or rice). I add a spoon of yogurt if I like.
 
 Tell me what you actually ate — for example "rice, chicken curry and salad" — and I will say how it looks.`;
 
-const COOK_TODAY = `Three quick ideas from everyday ingredients:
-
-Chana chaat — boiled chickpeas with onion, tomato, lemon and chaat masala. No cooking needed.
+const COOK_TODAY = `Chana chaat — boiled chickpeas with onion, tomato, lemon and chaat masala. No cooking needed.
 
 Masala omelette with roti — eggs with onion, tomato and green chilli, folded and served with roti.
 
@@ -2529,7 +2714,7 @@ function barcodeAnswer(p: LocalBarcodeProduct, norm: string): string | null {
     ? p.categories.split(",").map((c) => c.trim()).filter(Boolean).slice(0, 3).join(", ")
     : "";
   const lines = [
-    `Short answer: ${name}${p.brands ? ` (${p.brands})` : ""}${shortCategories ? ` — ${shortCategories}` : ""}.`,
+    `That's ${name}${p.brands ? ` (${p.brands})` : ""}${shortCategories ? ` — ${shortCategories}` : ""}.`,
     "",
   ];
   if (scoreLine) lines.push(scoreLine, "");
@@ -2633,222 +2818,107 @@ function conditionLine(norm: string): string | null {
 
 // ---- Topic guides (v2): meal ideas, health topics, market and hotel food ----
 
-const BREAKFAST_IDEAS = `Breakfast ideas — light, filling, and quick:
-
-- Oats porridge with banana or dates — filling and gentle on the stomach.
-- Masala omelette with roti — protein that keeps you full till lunch.
-- Boiled egg with toast — simple and quick.
-- Paratha with yogurt — filling, but go easy on the oil.
-- Chana chaat or a piece of fruit — light, for days when you are not very hungry.
+const BREAKFAST_IDEAS = `Oats porridge with banana or dates — filling and gentle on the stomach. Masala omelette with roti — protein that keeps you full till lunch. Boiled egg with toast — simple and quick. Paratha with yogurt — filling, but go easy on the oil. Chana chaat or a piece of fruit — light, for days when you are not very hungry.
 
 A good breakfast has some protein and some fibre — it keeps you full far longer than just tea and biscuits.
 
 Do you usually eat a big breakfast or something light?`;
 
-const LUNCH_IDEAS = `Lunch ideas — a full plate without feeling heavy:
-
-- Daal chawal with salad — cheap, filling, and a good everyday plate.
-- Roti with sabzi and yogurt — light and full of fibre.
-- Chicken curry with roti — keep the oil low and add salad.
-- Chana chaat with a boiled egg — quick, high in protein.
-- Khichdi with yogurt — gentle and easy to digest.
+const LUNCH_IDEAS = `Daal chawal with salad — cheap, filling, and a good everyday plate. Roti with sabzi and yogurt — light and full of fibre. Chicken curry with roti — I'd keep the oil low and add salad. Chana chaat with a boiled egg — quick, high in protein. Khichdi with yogurt — gentle and easy to digest.
 
 Half your plate vegetables, a quarter roti or rice, a quarter protein — that is the shape of a good lunch.
 
 Do you eat lunch at home or outside?`;
 
-const DINNER_IDEAS = `Dinner ideas — lighter is better late in the day:
-
-- Vegetable soup or daal soup — warm, light, and easy on the stomach.
-- Grilled chicken or fish with salad — protein without heaviness.
-- Khichdi with yogurt — a classic light dinner.
-- Roti with sabzi — simple and filling.
-- A small bowl of daal with a little rice — light and satisfying.
+const DINNER_IDEAS = `Vegetable soup or daal soup — warm, light, and easy on the stomach. Grilled chicken or fish with salad — protein without heaviness. Khichdi with yogurt — a classic light dinner. Roti with sabzi — simple and filling. A small bowl of daal with a little rice — light and satisfying.
 
 Dinner is best kept lighter than lunch, and not too late — heavy fried food at night sits badly.
 
 What time do you usually eat dinner?`;
 
-const WHAT_TO_EAT = `What should you eat? Here's a simple rule for most days:
-
-- Half your plate vegetables — sabzi, salad, or any green you have.
-- A quarter roti or rice — whole wheat roti is better than white bread.
-- A quarter protein — daal, egg, chicken, fish, or chickpeas.
-- Water with the meal — plain water beats soft drinks.
-- Fruit for a snack — a banana or an apple beats biscuits most days.
+const WHAT_TO_EAT = `Here's a simple rule I go by on most days. Half your plate vegetables — sabzi, salad, or any green you have. A quarter roti or rice — whole wheat roti is better than white bread. A quarter protein — daal, egg, chicken, fish, or chickpeas. Water with the meal — plain water beats soft drinks. Fruit for a snack — a banana or an apple beats biscuits most days.
 
 That plate works for most healthy people most days. If you have diabetes, blood pressure, or another condition, tell me which one and I will adjust it.
 
 Tell me what you have at home and I will suggest something from it.`;
 
-const WEIGHT_LOSS_GUIDE = `Losing weight, the steady way:
-
-- Smaller portions — one roti instead of two, and a smaller plate of rice.
-- Half your plate vegetables — they fill you up with very few calories.
-- Cut back on sugar and fried food — soft drinks, biscuits, and fried snacks add up fast.
-- Drink water before meals — it genuinely helps with portions.
-- Walk daily — even a short walk after meals helps.
+const WEIGHT_LOSS_GUIDE = `If I wanted to lose weight, I'd start with smaller portions and steady habits. Smaller portions — one roti instead of two, and a smaller plate of rice. Half your plate vegetables — they fill you up with very few calories. I cut back on sugar and fried food — soft drinks, biscuits, and fried snacks add up fast. I drink water before meals — it genuinely helps with portions. I walk daily — even a short walk after meals helps.
 
 There is no quick fix, and crash diets do more harm than good — slow and steady is the way that lasts.
 
 If you have diabetes, blood pressure, or any medical condition, please check with your doctor before changing your diet.`;
 
-const WEIGHT_GAIN_GUIDE = `Gaining weight in a healthy way:
-
-- Eat more often — three meals plus a snack or two.
-- Add energy-rich foods — milk, eggs, nuts, peanut butter, daal, and roti.
-- A glass of milk with breakfast and before bed — an easy way to add calories.
-- Nuts and dates as snacks — small, but full of energy.
-- Don't skip meals — and don't rely on junk food to gain weight.
+const WEIGHT_GAIN_GUIDE = `I eat more often — three meals plus a snack or two. I add energy-rich foods — milk, eggs, nuts, peanut butter, daal, and roti. A glass of milk with breakfast and before bed — an easy way to add calories. Nuts and dates as snacks — small, but full of energy. I wouldn't skip meals — and I wouldn't rely on junk food to gain weight.
 
 Healthy weight gain is about eating more good food, not just more food.
 
 If you are losing weight without trying, please see a doctor — that is worth checking.`;
 
-const PROTEIN_GUIDE = `Foods rich in protein:
-
-- Eggs — the cheapest good protein around.
-- Chicken and fish — grilled is better than fried.
-- Daal, chickpeas and beans — protein plus fibre, and cheap.
-- Yogurt and paneer — good with any meal.
-- Nuts and seeds — a handful a day goes a long way.
+const PROTEIN_GUIDE = `Eggs — the cheapest good protein around. Chicken and fish — grilled is better than fried. Daal, chickpeas and beans — protein plus fibre, and cheap. Yogurt and paneer — good with any meal. Nuts and seeds — a handful a day goes a long way.
 
 For muscle, protein works together with exercise — food alone won't build muscle, and exercise alone won't either. You need both.
 
 Do you exercise regularly, or are you starting out?`;
 
-const DIABETES_GUIDE = `Eating with diabetes — general guidance:
-
-- Whole grains over white — whole wheat roti and brown rice are better than white bread and white rice.
-- Daal, chickpeas and vegetables — they fill you up without spiking sugar.
-- Less sugar and sweet drinks — soft drinks, packaged juice, and sweet tea are the biggest problem.
-- Fruit is fine, whole fruit — eat it, don't drink it as juice.
-- Small, regular meals — and watch the portion of rice and roti.
+const DIABETES_GUIDE = `With diabetes, I'd focus on whole grains, daal and vegetables, and keep sugar and sweet drinks low. Whole grains over white — whole wheat roti and brown rice are better than white bread and white rice. Daal, chickpeas and vegetables — they fill you up without spiking sugar. Less sugar and sweet drinks — soft drinks, packaged juice, and sweet tea are the biggest problem. Fruit is fine, whole fruit — I'd eat it, not drink it as juice. Small, regular meals — and I'd watch the portion of rice and roti.
 
 This is general information, not medical advice — please check with your doctor or a dietitian for your own plan.`;
 
-const BP_GUIDE = `Eating with high blood pressure — general guidance:
-
-- Less salt — the biggest single change. Taste before adding more.
-- Less packaged food — chips, namkeen, instant noodles, and pickles are all very salty.
-- More vegetables and fruit — they help more than most people realise.
-- Less fried food — and measure the oil instead of pouring freely.
-- More water, less soft drink — soft drinks add salt and sugar both.
+const BP_GUIDE = `With high blood pressure, salt is the biggest thing I'd watch. Less salt — the biggest single change. I taste before adding more. Less packaged food — chips, namkeen, instant noodles, and pickles are all very salty. More vegetables and fruit — they help more than most people realise. Less fried food — and measure the oil instead of pouring freely. More water, less soft drink — soft drinks add salt and sugar both.
 
 This is general information, not medical advice — please check with your doctor for your own plan.`;
 
-const KIDS_GUIDE = `Food for kids — lunchbox and everyday ideas:
-
-- Roti roll with egg or chicken — easy to carry and filling.
-- A small box of fruit — banana, apple, or grapes.
-- Yogurt or milk — calcium for growing bones.
-- Chana chaat or boiled egg — protein that keeps them full at school.
-- Nuts and dates — a small handful as a snack.
+const KIDS_GUIDE = `Roti roll with egg or chicken — easy to carry and filling. A small box of fruit — banana, apple, or grapes. Yogurt or milk — calcium for growing bones. Chana chaat or boiled egg — protein that keeps them full at school. Nuts and dates — a small handful as a snack.
 
 Kids need energy, so don't cut their food back — just keep the sugary snacks and soft drinks occasional.
 
 For a child with a medical condition, please ask your doctor first.`;
 
-const PREGNANCY_GUIDE = `Eating during pregnancy — general guidance:
-
-- Fresh, well-cooked food — daal, roti, vegetables, egg, and milk are all good everyday foods.
-- Wash fruit and vegetables well — and drink boiled or clean water.
-- Avoid raw or undercooked food — meat, eggs, and fish should be fully cooked.
-- Small, frequent meals — they help with nausea and acidity.
-- Milk and yogurt — calcium matters, and they are easy to digest.
+const PREGNANCY_GUIDE = `During pregnancy, I'd stick to fresh, well-cooked food — daal, roti, vegetables, egg, and milk are all good everyday foods. I wash fruit and vegetables well — and drink boiled or clean water. I avoid raw or undercooked food — meat, eggs, and fish should be fully cooked. Small, frequent meals — they help with nausea and acidity. Milk and yogurt — calcium matters, and they are easy to digest.
 
 This is general information only — please ask your doctor about anything you are unsure of.`;
 
-const BUDGET_GUIDE = `Healthy food on a tight budget:
-
-- Daal, chana, and beans — the cheapest protein there is.
-- Eggs — cheap, filling, and full of protein.
-- Seasonal vegetables — whatever is in season is cheapest and freshest.
-- Bananas and seasonal fruit — the cheapest fruit, and genuinely good for you.
-- Roti over bread — whole wheat roti is cheaper and better than white bread.
+const BUDGET_GUIDE = `Eating well on a tight budget is mostly about daal, eggs and seasonal vegetables. Daal, chana, and beans — the cheapest protein there is. Eggs — cheap, filling, and full of protein. Seasonal vegetables — whatever is in season is cheapest and freshest. Bananas and seasonal fruit — the cheapest fruit, and genuinely good for you. Roti over bread — whole wheat roti is cheaper and better than white bread.
 
 Healthy eating doesn't need expensive food — daal, roti, sabzi, and eggs are the cheapest good meals there are.
 
 What is your usual monthly food budget like?`;
 
-const SICK_GUIDE = `What to eat when you are sick — general guidance:
+const SICK_GUIDE = `When I'm sick, I mostly go for fluids and light food. Plenty of fluids — water, soup, and nimbu pani. I wouldn't let myself get dehydrated. Khichdi with yogurt — gentle, easy to digest, and filling. Plain toast or plain rice — light and easy on the stomach. Soup with vegetables — warm and soothing. Small amounts, often — a little at a time beats a big meal.
 
-- Plenty of fluids — water, soup, and nimbu pani. Don't let yourself get dehydrated.
-- Khichdi with yogurt — gentle, easy to digest, and filling.
-- Plain toast or plain rice — light and easy on the stomach.
-- Soup with vegetables — warm and soothing.
-- Small amounts, often — a little at a time beats a big meal.
-
-Avoid very spicy, fried, or heavy food while you are recovering.
+I avoid very spicy, fried, or heavy food while I'm recovering.
 
 See a doctor quickly if the fever lasts, breathing is hard, or you can't keep fluids down.`;
 
-const WORKOUT_GUIDE = `Eating around a workout:
-
-- Before a workout — a banana, toast, or a small bowl of oats. Light and easy to digest.
-- After a workout — egg, chicken, daal, or yogurt. Protein helps recovery.
-- Water, always — drink before, during, and after.
-- Skip heavy fried food before exercise — it sits badly.
+const WORKOUT_GUIDE = `Before a workout — a banana, toast, or a small bowl of oats. Light and easy to digest. After a workout — egg, chicken, daal, or yogurt. Protein helps recovery. Water, always — I'd drink before, during, and after. I skip heavy fried food before exercise — it sits badly.
 
 Food and exercise work together — neither does the job alone.
 
 Do you work out in the morning or the evening?`;
 
-const PACKAGED_SNACKS_GUIDE = `Packaged snacks in the market — what they are and what to watch for:
+const PACKAGED_SNACKS_GUIDE = `Chips, namkeen, biscuits, instant noodles, chocolates, candies, packaged juices, energy drinks, and bakery items are all packaged snacks — made to last on a shelf, so they are usually high in salt, sugar, or oil, and low in nutrients.
 
-Chips, namkeen, biscuits, instant noodles, chocolates, candies, packaged juices, energy drinks, and bakery items are all packaged snacks — made to last on a shelf, so they are usually high in salt, sugar, or oil, and low in nutrients.
+Salt — chips and namkeen are the worst for this. Sugar — biscuits, chocolates, candies, and packaged juices are mostly sugar. Oil and fat — instant noodles and fried snacks are cooked in a lot of oil. Additives — colours and flavourings are usually safe in small amounts, but they add nothing good.
 
-What to watch for:
-- Salt — chips and namkeen are the worst for this.
-- Sugar — biscuits, chocolates, candies, and packaged juices are mostly sugar.
-- Oil and fat — instant noodles and fried snacks are cooked in a lot of oil.
-- Additives — colours and flavourings are usually safe in small amounts, but they add nothing good.
+On the label, I'd check the ingredients in order — the first ingredient is the main one. Per 100 g — compare salt and sugar between two packs. Expiry date — never eat expired snacks.
 
-What to check on the label:
-- Ingredients, in order — the first ingredient is the main one.
-- Per 100 g — compare salt and sugar between two packs.
-- Expiry date — never eat expired snacks.
-
-Better daily snacks: roasted chana, fruit, a handful of nuts, yogurt, or popcorn — they fill you up properly.
+For a daily snack, I'd go for roasted chana, fruit, a handful of nuts, yogurt, or popcorn — they fill you up properly.
 
 How often do you eat packaged snacks?`;
 
-const MARKET_GUIDE = `Daily food from the market — unpackaged, fresh food:
-
-- Street food — tasty and fresh when made in front of you, but often oily and salty. Eat it fresh, from a clean place, in small portions.
-- Bakery bread and naan — fresh from the tandoor is fine, but it is white flour, so pair it with egg, daal, or curry — not just butter and jam.
-- Fresh market produce — vegetables and fruit are cheapest and freshest in season. Wash them well before eating.
-- Loose lentils, rice, and spices — check for stones, dampness, and a bad smell before you buy. Buy small amounts and store them dry.
-- Dahi from the shop — buy it fresh, keep it cold, and finish it the same day.
-- Milk from the shop — always boil it well before drinking, and never drink it raw.
+const MARKET_GUIDE = `Street food — tasty and fresh when made in front of you, but often oily and salty. I eat it fresh, from a clean place, in small portions. Bakery bread and naan — fresh from the tandoor is fine, but it is white flour, so I'd pair it with egg, daal, or curry — not just butter and jam. Fresh market produce — vegetables and fruit are cheapest and freshest in season. I wash them well before eating. Loose lentils, rice, and spices — I'd check for stones, dampness, and a bad smell before I buy. I buy small amounts and store them dry. Dahi from the shop — I'd buy it fresh, keep it cold, and finish it the same day. Milk from the shop — I'd always boil it well before drinking, and never drink it raw.
 
 Fresh food is great — it just needs a little more care than packaged food.`;
 
-const EATING_OUT_GUIDE = `Hotel and restaurant food — enjoying it without overdoing it:
+const EATING_OUT_GUIDE = `Hotel and restaurant food is fun, and I'd enjoy it without overdoing it. Grilled over fried — tikka, BBQ, and grilled chicken are lighter than fried items. Biryani and karahi — tasty, but hotel versions use more oil and salt than homemade. A small portion with salad and raita is the way. Fast food — burgers, fries, pizza, and shawarma are fine occasionally, but they are salty, oily, and low in nutrients. Continental dishes — grilled is good, creamy sauces and fried items are heavy. Chai and doodh patti — lovely, but ask for less sugar.
 
-- Grilled over fried — tikka, BBQ, and grilled chicken are lighter than fried items.
-- Biryani and karahi — tasty, but hotel versions use more oil and salt than homemade. A small portion with salad and raita is the way.
-- Fast food — burgers, fries, pizza, and shawarma are fine occasionally, but they are salty, oily, and low in nutrients.
-- Continental dishes — grilled is good, creamy sauces and fried items are heavy.
-- Chai and doodh patti — lovely, but ask for less sugar.
-
-Simple rules for eating out: small portions, salad with the meal, water instead of soft drinks, and share the dessert.
+My simple rules for eating out are small portions, salad with the meal, water instead of soft drinks, and sharing the dessert.
 
 Do you eat out often, or only on special occasions?`;
 
-const CALORIES_GUIDE = `Calories — roughly, not exactly:
+const CALORIES_GUIDE = `Here are rough ranges I go by — not exact numbers, since size, recipe and portion change them a lot. A medium roti — roughly 70–100 calories. A small plate of cooked white rice — roughly 150–250 calories. A small bowl of daal — roughly 100–200 calories. One boiled egg — roughly 60–80 calories. One medium banana — roughly 90–120 calories. One glass of milk — roughly 120–160 calories. One slice of bread — roughly 70–100 calories.
 
-These are rough ranges, not exact numbers — size, recipe, and portion change them a lot:
-
-- A medium roti — roughly 70–100 calories
-- A small plate of cooked white rice — roughly 150–250 calories
-- A small bowl of daal — roughly 100–200 calories
-- One boiled egg — roughly 60–80 calories
-- One medium banana — roughly 90–120 calories
-- One glass of milk — roughly 120–160 calories
-- One slice of bread — roughly 70–100 calories
-
-The honest point: exact calories matter less than the portion. A small plate of an everyday food beats a big plate of a treat — and plain, home-cooked food is almost always lighter than packaged or fried food.
+For me, exact calories matter less than the portion. A small plate of an everyday food beats a big plate of a treat — and plain, home-cooked food is almost always lighter than packaged or fried food.
 
 Want the rough range for a specific food? Just ask — for example, "how many calories in a roti?"`;
 
@@ -2877,11 +2947,9 @@ function caloriesAnswer(foods: { entry: FoodEntry }[]): string {
     const range = CALORIE_RANGES[named.display.toLowerCase()];
     if (range) {
       return [
-        `${named.display} — roughly: a medium serving is ${range}.`,
+        `A medium serving of ${named.display.toLowerCase()} is ${range} for me — that's a rough range, not an exact number, since size, recipe and portion change it a lot.`,
         "",
-        "That's a rough range, not an exact number — size, recipe and portion change it a lot.",
-        "",
-        "In general, the exact calories matter less than the portion: a small plate of an everyday food beats a big plate of a treat.",
+        "I worry less about exact calories than about the portion: a small plate of an everyday food beats a big plate of a treat.",
         "",
       ].join("\n");
     }
@@ -2924,8 +2992,12 @@ function substitutionAnswer(foods: { entry: FoodEntry }[]): string {
     const key = named.display.toLowerCase();
     const hit = SUBSTITUTIONS.find((s) => s.keys.includes(key) || named.names.some((n) => s.keys.includes(n)));
     if (hit) {
+      const text = hit.text;
+      const firstPerson = /^Try\b/.test(text)
+        ? `I'd try ${text.slice(4).charAt(0).toLowerCase()}${text.slice(5)}`
+        : text.charAt(0).toLowerCase() + text.slice(1);
       return [
-        `Instead of ${named.display.toLowerCase()}: ${hit.text}`,
+        `Instead of ${named.display.toLowerCase()}, ${firstPerson}`,
         "",
         "Want a swap for something else? Just ask.",
       ].join("\n");
@@ -2933,19 +3005,12 @@ function substitutionAnswer(foods: { entry: FoodEntry }[]): string {
     return [
       `I don't have a swap for ${named.display.toLowerCase()} in my local knowledge yet.`,
       "",
-      "In general: swap fried for grilled, sugary for plain, and white flour for whole wheat — those three swaps help almost every dish.",
+      "In general, I'd swap fried for grilled, sugary for plain, and white flour for whole wheat — those three swaps help almost every dish.",
       "",
     ].join("\n");
   }
   return [
-    "Common food swaps:",
-    "",
-    "- Sugar — use half, or dates in cooking.",
-    "- Salt — lemon, green chilli, and fresh coriander.",
-    "- Butter or ghee — a little oil, or yogurt.",
-    "- White rice — brown rice, or half rice and half vegetables.",
-    "- Cream — yogurt, same creaminess, much lighter.",
-    "- Cola — water, or soda water with lemon.",
+    "A few swaps I use a lot. Sugar — I'd use half, or dates in cooking. Salt — lemon, green chilli, and fresh coriander. Butter or ghee — a little oil, or yogurt. White rice — brown rice, or half rice and half vegetables. Cream — yogurt, same creaminess, much lighter. Cola — water, or soda water with lemon.",
     "",
     "Ask about a specific food — for example, \"what can I use instead of sugar?\" — and I will give you a direct swap.",
   ].join("\n");
@@ -3005,7 +3070,7 @@ function helpfulFallback(norm: string, original: string): string | null {
   ];
   if (cat) lines.push(cat.text, "");
   lines.push(
-    "What would help most: send a clear photo of the label, type the ingredients, or scan the barcode — then I can go through it with you.",
+    "What would help most is a clear photo of the label, the typed ingredients, or a barcode scan — then I can go through it with you.",
     "",
     "A key in Settings unlocks fuller answers.",
   );
@@ -3111,7 +3176,7 @@ export function answerLocally(question: string, ctx?: { barcodeData?: LocalBarco
   }
 
   // Label-reading help.
-  if (/\blabel\b/.test(norm) && /\b(read|understand|help|mean|explain)\b/.test(norm)) {
+  if (/\blabel\b/.test(norm) && /\b(read|reading|understand|help|mean|explain)\b/.test(norm)) {
     return LABEL_GUIDE;
   }
 
@@ -3200,23 +3265,47 @@ export function answerLocally(question: string, ctx?: { barcodeData?: LocalBarco
     return compareAnswer(foods[0].entry, foods[1].entry);
   }
 
+  // "Will you eat expired food?" / "Would you eat X?" — answer as myself, first person.
+  const expiredMatch = /\bexpired\b/.test(norm) || /\bgone off\b/.test(norm);
+  const personalEat = /^(will|would|do|can|could) you (eat|drink|have|try)\b/.test(norm) || /^do you eat\b/.test(norm);
+  if (expiredMatch) {
+    const target = foods.length > 0 ? foods[0].entry : null;
+    if (target) {
+      return [
+        `No, I wouldn't eat expired ${target.display.toLowerCase()}. Once it's past its date I can't tell from smell or looks whether it's safe, and tasting it to check isn't worth the risk — I'd throw it out.`,
+        "",
+        `Storing ${target.display.toLowerCase()} — I keep it cool and covered, and use it while it is fresh.`,
+        "",
+      ].join("\n");
+    }
+    return [
+      "No, I wouldn't eat expired food. Once food is past its date I can't tell from smell or looks whether it's safe, and tasting it to check isn't worth the risk. If I'm not sure how it was stored or it's past the date, I'd throw it out.",
+      "",
+      "I keep cooked food in the fridge and eat it within a day or two, and I keep dry food sealed and away from damp — and I follow the date on the pack.",
+      "",
+    ].join("\n");
+  }
+  if (personalEat && foods.length > 0) {
+    return personalEatAnswer(foods[0].entry);
+  }
+
   // Storage and expiry.
   if (isStorage) {
     if (foods.length > 0) {
       const e = foods[0].entry;
       return [
-        `Storing ${e.display.toLowerCase()}: keep it cool and covered, and use it while it is fresh.`,
+        `Storing ${e.display.toLowerCase()} — I keep it cool and covered, and use it while it is fresh.`,
         "",
-        "In general: keep cooked food in the fridge and eat it within a day or two, keep dry foods sealed and away from damp, and never taste food to check if it is safe.",
+        "In general, I keep cooked food in the fridge and eat it within a day or two, I keep dry food sealed and away from damp, and I never taste food to check if it is safe.",
         "",
-        "When in doubt, throw it out — smell and looks can't prove food is safe.",
+        "When in doubt, I throw it out — smell and looks can't prove food is safe.",
         "",
       ].join("\n");
     }
     return [
-      "Storing food, in general: keep cooked food in the fridge and eat it within a day or two, keep dry foods sealed and away from damp, and follow the date on the pack.",
+      "Storing food, in general — I keep cooked food in the fridge and eat it within a day or two, I keep dry food sealed and away from damp, and I follow the date on the pack.",
       "",
-      "When in doubt, throw it out — smell and looks can't prove food is safe.",
+      "When in doubt, I throw it out — smell and looks can't prove food is safe.",
       "",
     ].join("\n");
   }
@@ -3226,7 +3315,7 @@ export function answerLocally(question: string, ctx?: { barcodeData?: LocalBarco
     const extra = conditionLine(norm);
     const first = foodAnswer(foods[0].entry, extra || undefined);
     if (foods.length > 1) {
-      return `${first}\n\nAnd ${foods[1].entry.display}: ${foods[1].entry.blurb}`;
+      return `${first}\n\nAnd ${foods[1].entry.blurb}`;
     }
     return first;
   }

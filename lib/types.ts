@@ -19,7 +19,7 @@ export interface ChatMessage {
   createdAt: number;
   feedback?: 1 | -1;
   sources?: { title: string; url: string }[];
-  status?: "streaming" | "done" | "error";
+  status?: "streaming" | "done" | "error" | "typing";
   /** Model that produced this assistant reply (SSE model event), if known. */
   model?: string;
   /** Two-step photo flow: which step produced this assistant reply. */
