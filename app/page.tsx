@@ -166,7 +166,10 @@ export default function Home() {
     if (settings.provider !== "local" && !savedKey && images.length === 0 && !opts?.mode) {
       const lastUserText = [...history].reverse().find((m) => m.role === "user")?.text || "";
       const guard = classifyUserText(lastUserText, false);
-      const localText = guard ? guard.text : answerLocally(lastUserText, { barcodeData: opts?.barcodeData });
+      // Pass the recent chat (excluding this new message) so follow-ups
+      // like "why?" or "is that better than roti?" can resolve "that".
+      const prevTurns = history.slice(0, -1).slice(-6).map((m) => ({ role: m.role, text: m.text }));
+      const localText = guard ? guard.text : answerLocally(lastUserText, { barcodeData: opts?.barcodeData, history: prevTurns });
       if (localText) {
         const doneMsg: ChatMessage = { id: crypto.randomUUID(), role: "assistant", text: localText, createdAt: Date.now(), status: "done", model: "FOODLENS local answers" };
         const finalChat: Chat = { ...chat, messages: [...history, doneMsg], title: chat.messages.length <= 1 ? (history[0]?.text.slice(0, 48) || "New chat") : chat.title };

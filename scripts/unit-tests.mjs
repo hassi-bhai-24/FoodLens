@@ -470,6 +470,89 @@ ok(nutellaAns?.includes("occasional treat"), "local: barcode Nutri-Score E read 
 ok(answerLocally("Is this halal?", { barcodeData: nutella })?.includes("can't confirm halal"), "local: barcode data never certifies halal");
 ok(answerLocally("Does it contain milk?", { barcodeData: nutella })?.includes("milk is listed"), "local: barcode allergen reported from OFF data");
 ok(answerLocally("Is this healthy?", { barcodeData: { code: "0000000000000", missing: ["product not found in Open Food Facts"] } })?.includes("couldn't find this barcode"), "local: unknown barcode reported as not found");
+// ---- v2 expansion: new foods, topics, calories, substitutions, follow-ups ----
+ok(answerLocally("Is pizza healthy?")?.includes("Pizza"), "local v2: pizza answered");
+ok(answerLocally("Is pizza healthy?") && !/\d/.test(answerLocally("Is pizza healthy?")), "local v2: pizza answer has no digits");
+ok(answerLocally("Is shawarma healthy?")?.includes("Shawarma"), "local v2: shawarma answered");
+ok(answerLocally("Is Zinger burger healthy?")?.includes("treat"), "local v2: zinger answered as a treat category, not a brand fact");
+ok(answerLocally("Is hotel biryani healthy?")?.includes("Hotel biryani"), "local v2: hotel biryani answered");
+ok(answerLocally("Is hotel biryani healthy?") && !/\d/.test(answerLocally("Is hotel biryani healthy?")), "local v2: hotel biryani answer has no digits");
+ok(answerLocally("Is bbq healthy?")?.includes("BBQ"), "local v2: BBQ answered");
+ok(answerLocally("Is street food safe to eat?")?.includes("Street food"), "local v2: street food answered");
+ok(answerLocally("Is fresh milk from the shop safe?")?.includes("boil"), "local v2: fresh shop milk says boil it first");
+ok(answerLocally("Is packaged juice healthy?")?.includes("Packaged juice"), "local v2: packaged juice answered");
+ok(answerLocally("Is fast food bad?")?.includes("Fast food"), "local v2: fast food answered as a category");
+ok(answerLocally("Is continental food healthy?")?.includes("Continental food"), "local v2: continental food answered");
+ok(/tandoor naan/i.test(answerLocally("Is tandoor naan healthy?") || ""), "local v2: tandoor naan answered");
+// Pros and cons, spelled out, for fruits and vegetables.
+const mangoPros = answerLocally("pros and cons of mango");
+ok(mangoPros?.includes("Pros and cons of Mango"), "local v2: mango pros and cons answered");
+ok(mangoPros?.includes("Pros:") && mangoPros?.includes("Cons:"), "local v2: pros and cons list both sides");
+ok(answerLocally("banana ke faide aur nuksan")?.includes("Pros and cons of Banana"), "local v2: Roman Urdu faide aur nuksan gives pros and cons");
+const spinachPros = answerLocally("pros and cons of spinach");
+ok(spinachPros?.includes("Pros and cons of Spinach") && spinachPros?.includes("Pros:") && spinachPros?.includes("Cons:"), "local v2: vegetable pros and cons listed");
+// Meal ideas and health topics.
+ok(answerLocally("What should I eat for breakfast?")?.includes("Breakfast ideas"), "local v2: breakfast ideas given");
+ok(answerLocally("What should I eat for lunch?")?.includes("Lunch ideas"), "local v2: lunch ideas given");
+ok(answerLocally("What should I eat for dinner?")?.includes("Dinner ideas"), "local v2: dinner ideas given");
+ok(answerLocally("I want to lose weight, what should I eat?")?.includes("Losing weight"), "local v2: weight loss guidance given");
+ok(answerLocally("How can I gain weight?")?.includes("Gaining weight"), "local v2: weight gain guidance given");
+ok(answerLocally("What foods are good for muscle gain?")?.includes("protein"), "local v2: protein/muscle guidance given");
+const diabetesGuide = answerLocally("I have diabetes, what can I eat?");
+ok(diabetesGuide?.includes("diabetes") && diabetesGuide?.includes("doctor"), "local v2: diabetes guide with doctor note");
+const bpGuide = answerLocally("What should I eat with high blood pressure?");
+ok(bpGuide?.includes("blood pressure") && bpGuide?.includes("doctor"), "local v2: blood pressure guide with doctor note");
+ok(answerLocally("What should kids eat for lunch?")?.includes("Food for kids"), "local v2: kids guidance given");
+const pregGuide = answerLocally("What should I eat during pregnancy?");
+ok(pregGuide?.includes("pregnancy") && pregGuide?.includes("doctor"), "local v2: pregnancy guidance with doctor note");
+ok(answerLocally("What is the best cheap healthy food?")?.includes("tight budget"), "local v2: budget meals guidance given");
+const sickGuide = answerLocally("I am sick, what should I eat?");
+ok(sickGuide?.includes("sick") && sickGuide?.includes("doctor"), "local v2: sick guidance with doctor note");
+ok(answerLocally("What should I eat before a workout?")?.includes("workout"), "local v2: workout guidance given");
+ok(answerLocally("What should I eat?")?.includes("Half your plate"), "local v2: bare what-should-I-eat guidance given");
+// Market and hotel guides.
+const snackGuide = answerLocally("what snacks can I eat daily");
+ok(snackGuide?.includes("Packaged snacks") && snackGuide?.includes("label"), "local v2: packaged snacks guide covers labels");
+ok(answerLocally("what should I eat at a hotel?")?.includes("Hotel and restaurant food"), "local v2: eating-out guide given");
+ok(answerLocally("What should I buy at the market?")?.includes("market"), "local v2: market guide given");
+// Roman Urdu mixes.
+ok(answerLocally("Mujhe wazan kam karna hai, kya khaun?")?.includes("Losing weight"), "local v2: Roman Urdu weight loss answered");
+ok(answerLocally("kela or seb, konsa behtar hai?")?.includes("Banana") && answerLocally("kela or seb, konsa behtar hai?")?.includes("Apple"), "local v2: Roman Urdu comparison covers both foods");
+// Calories: rough ranges only, clearly labelled.
+const rotiCal = answerLocally("How many calories are in a roti?");
+ok(rotiCal?.includes("roughly 70–100") && rotiCal?.includes("rough range"), "local v2: roti calories are a labelled rough range");
+ok(answerLocally("How many calories are in a banana?")?.includes("roughly 90–120"), "local v2: banana calories are a labelled rough range");
+ok(answerLocally("How many calories should I eat?")?.includes("rough ranges"), "local v2: general calories guide given");
+// Substitutions.
+ok(answerLocally("What can I use instead of sugar?")?.includes("Instead of sugar"), "local v2: sugar substitution given");
+ok(answerLocally("What can I use instead of butter?")?.includes("Instead of butter"), "local v2: butter substitution given");
+ok(answerLocally("What can I use instead of cream?")?.includes("Yogurt instead"), "local v2: cream substitution given");
+ok(answerLocally("What can I use instead of something?")?.includes("Common food swaps"), "local v2: general substitution list given");
+// Multi-turn follow-ups with history.
+const bananaFirst = answerLocally("Is banana healthy?");
+const bananaHist = [{ role: "user", text: "Is banana healthy?" }, { role: "assistant", text: bananaFirst }];
+ok(answerLocally("why?", { history: bananaHist })?.includes("why banana counts"), "local v2: 'why?' follow-up explains the verdict");
+ok(answerLocally("is that better than roti?", { history: bananaHist })?.includes("Banana") && answerLocally("is that better than roti?", { history: bananaHist })?.includes("Roti"), "local v2: 'is that better than roti?' follow-up compares");
+const riceFirst = answerLocally("Is white rice healthy?");
+const riceHist = [{ role: "user", text: "Is white rice healthy?" }, { role: "assistant", text: riceFirst }];
+ok(answerLocally("or brown rice?", { history: riceHist })?.includes("Brown rice"), "local v2: 'or brown rice?' follow-up answers the new food");
+ok(answerLocally("is that good for diabetes?", { history: bananaHist })?.includes("diabetes"), "local v2: 'is that good for diabetes?' follow-up adds the condition note");
+ok(answerLocally("how many calories in that?", { history: bananaHist })?.includes("roughly 90–120"), "local v2: 'how many calories in that?' follow-up gives the range");
+ok(answerLocally("yes", { history: bananaHist }) !== null, "local v2: 'yes' follow-up gives more on the same food");
+const zingerFirst = answerLocally("Is Zinger burger healthy?");
+const zingerHist = [{ role: "user", text: "Is Zinger burger healthy?" }, { role: "assistant", text: zingerFirst }];
+ok(answerLocally("is that halal?", { history: zingerHist })?.includes("can't certify"), "local v2: 'is that halal?' follow-up never certifies");
+ok(answerLocally("and what about rice?")?.includes("Rice"), "local v2: 'and what about rice?' answers the food");
+// Improved fallback: useful, not a dead end — but non-food still returns null.
+const durianAns = answerLocally("Is durian healthy?");
+ok(durianAns?.includes("don't have") && durianAns?.includes("label"), "local v2: unknown food fallback says what would help");
+ok(durianAns?.includes("key in Settings"), "local v2: fallback ends with the soft key line");
+ok(!/durian is/i.test(durianAns || ""), "local v2: fallback invents no fact about the unknown food");
+// Human tone: varied openers, a closing question, no attribution line.
+const toneOpeners = new Set(["banana", "mango", "daal", "roti", "apple", "egg", "chicken", "pizza"].map((f) => (answerLocally(`Is ${f} healthy?`) || "").split("\n")[0]));
+ok(toneOpeners.size >= 2, "local v2: food answers vary their opening line");
+ok(bananaAns?.trimEnd().endsWith("?"), "local v2: food answer ends with a short follow-up question");
+ok(!/Answered by/i.test(bananaAns || ""), "local v2: no attribution line in the answer");
 // Fallback: questions the local engine cannot answer return null.
 ok(answerLocally("What is the capital of France?") === null, "local: non-food question returns null");
 ok(answerLocally("Tell me a joke") === null, "local: joke returns null");
