@@ -111,3 +111,100 @@ export function flagUnverifiedAnalysis(analysis: string, confirmedText: string):
   }
   return out;
 }
+
+// ---- Image quality check for label photos (preview v7, Test 18 gap) ----
+//
+// Blurry-label handling used to start only AFTER the model transcribed:
+// the transcription instruction forbids guessing and flagUnverifiedAnalysis
+// backstops the analysis, but the user got no warning at attachment time
+// that the photo they just took is too blurry or too dark to read
+// reliably. This assessor closes that gap. It is a pure, deterministic
+// function on raw RGBA pixels (no DOM, no async, no model), so it runs
+// on the already-drawn canvas in lib/image.ts and is unit-tested on
+// synthetic sharp and blurred label images.
+//
+// Metrics (documented, not hidden):
+// - brightness: mean of ITU-R BT.601 luminance, normalised 0..1.
+// - contrast:   luminance standard deviation, normalised 0..1.
+// - sharpness:  variance of the 4-neighbour Laplacian of the luminance,
+//               on the 0..255 grey scale. In-focus text has a high
+//               variance (edges everywhere); out-of-focus or motion-
+//               blurred text collapses towards 0. This is the standard
+//               blur heuristic; it cannot "read" anything — it only
+//               measures whether fine detail exists.
+//
+// Thresholds, calibrated in scripts/unit-tests.mjs on synthetic label
+// images (sharp, box-blurred, darkened, flat):
+// - blurry when variance < 120 (sharp synthetic labels measure > 400;
+//   even a light blur drops them by an order of magnitude).
+// - dark when mean luminance < 0.20 (a dim phone photo of a label).
+// - flat when contrast < 0.10 (no readable text detail, sharp or not).
+// Trade-off, stated plainly: a genuinely sharp photo of a textureless
+// surface (an empty wall) will be called blurry — for a label photo
+// that is the honest answer anyway, and the UI warning is advice,
+// never a block: the user can still send the photo.
+
+export interface ImageQuality {
+  /** Variance of Laplacian on the 0..255 scale (higher = more fine detail). */
+  variance: number;
+  /** Mean luminance 0..1. */
+  brightness: number;
+  /** Luminance standard deviation 0..1. */
+  contrast: number;
+  blurry: boolean;
+  dark: boolean;
+  flat: boolean;
+}
+
+export const BLUR_VARIANCE_THRESHOLD = 120;
+export const DARK_MEAN_THRESHOLD = 0.2;
+export const FLAT_CONTRAST_THRESHOLD = 0.1;
+
+export function assessImageQuality(pixels: ArrayLike<number>, width: number, height: number): ImageQuality {
+  const n = width * height;
+  if (n <= 0 || pixels.length < n * 4) {
+    return { variance: 0, brightness: 0, contrast: 0, blurry: true, dark: true, flat: true };
+  }
+  // Grey-scale luminance, 0..255, one value per pixel.
+  const gray = new Float64Array(n);
+  let sum = 0;
+  for (let i = 0; i < n; i++) {
+    const r = pixels[i * 4];
+    const g = pixels[i * 4 + 1];
+    const b = pixels[i * 4 + 2];
+    const y = 0.299 * r + 0.587 * g + 0.114 * b;
+    gray[i] = y;
+    sum += y;
+  }
+  const mean = sum / n;
+  let varSum = 0;
+  for (let i = 0; i < n; i++) {
+    const d = gray[i] - mean;
+    varSum += d * d;
+  }
+  const std = Math.sqrt(varSum / n);
+  // Variance of the 4-neighbour Laplacian over interior pixels.
+  let lapSum = 0;
+  let lapSqSum = 0;
+  let count = 0;
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const i = y * width + x;
+      const lap = 4 * gray[i] - gray[i - 1] - gray[i + 1] - gray[i - width] - gray[i + width];
+      lapSum += lap;
+      lapSqSum += lap * lap;
+      count++;
+    }
+  }
+  const variance = count > 0 ? lapSqSum / count - (lapSum / count) * (lapSum / count) : 0;
+  const brightness = mean / 255;
+  const contrast = std / 255;
+  return {
+    variance,
+    brightness,
+    contrast,
+    blurry: variance < BLUR_VARIANCE_THRESHOLD,
+    dark: brightness < DARK_MEAN_THRESHOLD,
+    flat: contrast < FLAT_CONTRAST_THRESHOLD,
+  };
+}

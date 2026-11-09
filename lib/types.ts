@@ -1,3 +1,5 @@
+import type { ImageQuality } from "./photo-check";
+
 export type Role = "user" | "assistant";
 export type ProviderId = "gemini" | "openai" | "anthropic" | "compatible" | "local";
 
@@ -9,6 +11,8 @@ export interface ChatImage {
   dataUrl: string;
   width: number;
   height: number;
+  /** On-device quality estimate (blur/dark/flat), computed in the image pipeline. */
+  quality?: ImageQuality;
 }
 
 export interface ChatMessage {

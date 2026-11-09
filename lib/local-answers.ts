@@ -172,7 +172,7 @@ const FOODS: FoodEntry[] = [
     pros: ["vitamin C", "good for the heart when cooked"],
     cons: ["acidic — can bother some stomachs"],
     tip: "Fresh in salad or cooked into curries." },
-  { names: ["onion", "onions", "pyaaz", "piyaz"], display: "Onion", verdict: "everyday",
+  { names: ["onion", "onions", "pyaaz", "piyaz", "pyaz"], display: "Onion", verdict: "everyday",
     blurb: "Onions add flavour and are good for you in everyday amounts.",
     pros: ["adds flavour without heaviness", "some antioxidants"],
     cons: ["raw onion can bother some stomachs"],
@@ -187,7 +187,7 @@ const FOODS: FoodEntry[] = [
     pros: ["vitamin A", "fibre"],
     cons: ["sweet when juiced in large amounts"],
     tip: "Raw as a snack or cooked in curries." },
-  { names: ["cauliflower", "phool gobhi", "phoolgobhi"], display: "Cauliflower", verdict: "everyday",
+  { names: ["cauliflower", "phool gobhi", "phoolgobhi", "gobhi", "gobi"], display: "Cauliflower", verdict: "everyday",
     blurb: "Cauliflower is a light, versatile vegetable.",
     pros: ["vitamin C and fibre", "fills the plate without heaviness"],
     cons: ["can cause gas for some people"],
@@ -340,7 +340,7 @@ FOODS.push(
     cons: ["takes time to cook"],
     tip: "Add to soups or cook like rice." },
   // ---- Dairy ----
-  { names: ["milk", "doodh"], display: "Milk", verdict: "everyday",
+  { names: ["milk", "doodh", "packaged milk", "milk pouch", "pouch milk"], display: "Milk", verdict: "everyday",
     blurb: "Milk is a good source of calcium and protein.",
     pros: ["calcium and protein", "versatile"],
     cons: ["full-fat milk is richer"],
@@ -695,7 +695,7 @@ FOODS.push(
     pros: ["quick, filling"],
     cons: ["white bread and mayo when loaded"],
     tip: "Whole wheat bread, egg or chicken, and salad inside." },
-  { names: ["paratha roll", "roll paratha"], display: "Paratha roll", verdict: "sometimes",
+  { names: ["paratha roll", "roll paratha", "chicken roll", "shami roll", "egg roll"], display: "Paratha roll", verdict: "sometimes",
     blurb: "A paratha roll is filling — the paratha is fried and the filling decides how healthy it is.",
     pros: ["filling"],
     cons: ["fried paratha, sauces"],
@@ -775,7 +775,7 @@ FOODS.push(
     pros: ["light, whole grain"],
     cons: ["butter and salt versions are heavy"],
     tip: "Plain or lightly salted popcorn is a good snack." },
-  { names: ["namkeen", "nimco", "sev"], display: "Namkeen", verdict: "treat",
+  { names: ["namkeen", "nimco", "sev", "nimko", "chanachur", "khatta meetha", "mixture"], display: "Namkeen", verdict: "treat",
     blurb: "Namkeen — sev, nimco, chivda — is fried chickpea flour and lentils with salt and spices. It is crunchy and filling, but it is fried in oil and very salty, and the small pieces make it easy to eat a whole packet without noticing.",
     pros: ["crunchy and filling", "made from lentils and chickpea flour", "goes well with tea"],
     cons: ["fried in a lot of oil", "very salty", "easy to eat a whole packet"],
@@ -920,7 +920,7 @@ FOODS.push(
     pros: ["nuts"],
     cons: ["sugar, ghee"],
     tip: "A small piece, occasionally." },
-  { names: ["gajjar ka halwa", "carrot halwa"], display: "Gajjar ka halwa", verdict: "sometimes",
+  { names: ["gajjar ka halwa", "carrot halwa", "gajar ka halwa"], display: "Gajjar ka halwa", verdict: "sometimes",
     blurb: "Gajjar ka halwa is carrot cooked in milk — sweet but made from a vegetable.",
     pros: ["carrot, milk"],
     cons: ["sugar, ghee"],
@@ -1167,7 +1167,7 @@ FOODS.push(
     pros: ["vitamins"],
     cons: ["sugar, no fibre"],
     tip: "A small glass, or eat the mango." },
-  { names: ["sugarcane juice", "ganne ka juice", "ganna juice"], display: "Sugarcane juice", verdict: "sometimes",
+  { names: ["sugarcane juice", "ganne ka juice", "ganna juice", "ganne ka ras"], display: "Sugarcane juice", verdict: "sometimes",
     blurb: "Sugarcane juice is fresh and natural — but it is still mostly sugar.",
     pros: ["fresh, natural"],
     cons: ["sugar, no fibre"],
@@ -1497,7 +1497,7 @@ FOODS.push(
     pros: ["vitamins, fibre"],
     cons: ["sweet"],
     tip: "Cook as sabzi with roti." },
-  { names: ["ridge gourd", "turai"], display: "Ridge gourd", verdict: "everyday",
+  { names: ["ridge gourd", "turai", "loki", "ghiya", "lauki"], display: "Ridge gourd", verdict: "everyday",
     blurb: "Ridge gourd is a light, watery vegetable — easy to digest.",
     pros: ["light, fibre"],
     cons: ["plain"],
@@ -1817,6 +1817,131 @@ FOODS.push(
     pros: ["fresh, soft"],
     cons: ["refined flour, butter"],
     tip: "One naan with curry and salad is enough." },
+);
+
+FOODS.push(
+  // ---- More foods (preview v7): snacks, packaged daily items, market, hotel, fruit and vegetables ----
+  { names: ["bakery patty", "patty", "chicken patty", "vegetable patty"], display: "Bakery patty", verdict: "treat",
+    blurb: "A bakery patty is flaky pastry wrapped around chicken or vegetables — tasty and filling, but the pastry is made with a lot of fat and it is baked until very rich.",
+    pros: ["filling, tasty", "easy to eat on the go"],
+    cons: ["fatty pastry", "refined flour", "salty filling"],
+    tip: "One patty with tea is a proper evening snack for me — two is where it stops feeling light." },
+  { names: ["corn puffs", "cheese puffs", "maize puffs"], display: "Corn puffs", verdict: "treat",
+    blurb: "Corn puffs are the light orange crispy snacks — air and cornmeal fried or baked with cheese or masala flavouring. They melt away so fast that a whole bag feels like nothing, but it is mostly salt, flavouring and oil.",
+    pros: ["light and crunchy", "cheap"],
+    cons: ["salt and flavouring", "fried or oily", "easy to eat a whole bag without noticing"],
+    tip: "I pour a small bowl instead of eating from the bag — the bag always wins otherwise. Roasted chana settles the same crunchy craving with far less salt." },
+  { names: ["instant soup", "soup packet", "packet soup"], display: "Instant soup", verdict: "sometimes",
+    blurb: "Instant soup from a packet is warm and comforting, but it is mostly thickener, salt and flavouring — a lot less vegetables than the picture on the pack suggests.",
+    pros: ["warm and quick", "light before a meal"],
+    cons: ["very salty", "little real vegetable", "mostly thickener and flavouring"],
+    tip: "I use half the packet, add real vegetables to it, and treat it as a warm-up, not the meal itself." },
+  { names: ["canned beans", "baked beans", "tin beans"], display: "Canned beans", verdict: "everyday",
+    blurb: "Canned beans are a genuinely handy everyday food — beans stay beans in the can, so you get the same protein and fibre as home-cooked ones.",
+    pros: ["protein and fibre", "ready in minutes", "keeps long in the cupboard"],
+    cons: ["salty sauce in most kinds", "sugar in baked-bean sauce"],
+    tip: "I rinse them in a strainer before using — that washes off a good part of the salt — then simmer them with tomato and spices." },
+  { names: ["sausage", "sausages", "chicken sausage", "beef sausage"], display: "Sausages", verdict: "treat",
+    blurb: "Sausages are processed meat — salted, cured or smoked, and packed into a casing. They taste great in a breakfast or a roll, but processed meat is an occasional food for me, not an everyday one.",
+    pros: ["protein, quick to cook", "tasty"],
+    cons: ["processed meat, high in salt", "fat in most kinds"],
+    tip: "Grill or pan-fry with little added oil, and pair with eggs or salad rather than more bread." },
+  { names: ["deli meat", "chicken loaf", "mortadella", "salami", "lunch meat"], display: "Deli meats", verdict: "treat",
+    blurb: "Deli meats — chicken loaf, salami, mortadella — are processed, salted slices, easy to drop into a sandwich. Like sausages, they are an occasional food for me, not a daily one.",
+    pros: ["convenient for sandwiches", "protein"],
+    cons: ["processed and salty", "fat and additives in many kinds"],
+    tip: "A couple of slices in a sandwich with salad is how I'd have them — the loaf should not be the whole sandwich." },
+  { names: ["cheese slices", "processed cheese", "sandwich cheese"], display: "Cheese slices", verdict: "sometimes",
+    blurb: "Cheese slices are processed cheese made to melt evenly in a sandwich. They are convenient and give calcium, but they are saltier and more processed than block cheese.",
+    pros: ["calcium, protein", "melts well"],
+    cons: ["salty and processed", "easy to stack two or three in one sandwich"],
+    tip: "One slice does the job in a sandwich — I can't taste the difference past that anyway." },
+  { names: ["frozen paratha", "packaged paratha", "ready-made paratha"], display: "Frozen paratha", verdict: "sometimes",
+    blurb: "Frozen parathas from a packet cook straight from the freezer, which is genuinely handy on busy mornings. They are usually made with more oil or margarine than a homemade paratha, because the layers need it.",
+    pros: ["quick and convenient", "consistent results"],
+    cons: ["more oil or margarine than homemade", "refined flour in most kinds"],
+    tip: "Cook it on a dry pan without adding extra oil, and eat it with egg or daal so the meal has protein." },
+  { names: ["instant coffee"], display: "Instant coffee", verdict: "everyday",
+    blurb: "Instant coffee is just dried coffee — the same caffeine as fresh, none of the fuss. For me it is a fine everyday drink, as long as it is not a three-in-one mix loaded with sugar and creamer.",
+    pros: ["quick and cheap", "wake-up alertness"],
+    cons: ["three-in-one mixes carry a lot of sugar"],
+    tip: "Plain instant coffee with milk, and sugar only if I really taste it — that is how I keep it an everyday drink." },
+  { names: ["tandoori roti", "kacha tandoor"], display: "Tandoori roti", verdict: "everyday",
+    blurb: "Tandoori roti is whole wheat dough baked on the tandoor wall — closer to homemade roti than to naan, and much lighter than the buttery naans beside it.",
+    pros: ["whole wheat", "no butter unless asked", "filling"],
+    cons: ["easy to eat two or three with salan"],
+    tip: "One or two with karahi and salad is a proper meal for me — I skip the butter brush on top." },
+  { names: ["roghni naan", "rogni naan"], display: "Roghni naan", verdict: "sometimes",
+    blurb: "Roghni naan is the soft, slightly sweet naan with sesame on top — lovely with karahi, but it is white flour with oil or ghee in the dough, richer than a plain tandoori roti.",
+    pros: ["soft and tasty", "sesame on top"],
+    cons: ["white flour", "oil or ghee in the dough"],
+    tip: "When both are there, I take the tandoori roti for the everyday meal and save roghni naan for when I actually want the treat." },
+  { names: ["kachori", "kachauri"], display: "Kachori", verdict: "treat",
+    blurb: "A kachori is a deep-fried pastry filled with spiced dal or onion — crisp, spicy and very moreish. The frying oil and the refined-flour shell make it a treat for me, not breakfast.",
+    pros: ["crispy and tasty", "filling"],
+    cons: ["deep fried", "refined flour shell", "heavy on the stomach"],
+    tip: "One kachori with chutney, eaten fresh and hot, satisfies me more than three cold ones from a bag." },
+  { names: ["anda paratha", "egg paratha"], display: "Anda paratha", verdict: "sometimes",
+    blurb: "Anda paratha is paratha dough cooked with egg folded or coated in — protein from the egg, but the paratha itself still soaks up a good amount of oil on the pan.",
+    pros: ["protein from the egg", "filling"],
+    cons: ["oil on the pan", "refined flour if made with maida"],
+    tip: "I ask for it made on a lightly oiled pan with whole wheat dough — same taste, much lighter." },
+  { names: ["khichdi", "khichree", "khichri"], display: "Khichdi", verdict: "everyday",
+    blurb: "Khichdi is rice and daal cooked soft together with a little turmeric and salt — one of the gentlest, most balanced everyday meals I know, and the first thing I want when my stomach is upset.",
+    pros: ["gentle and easy to digest", "protein from the daal", "light on the stomach"],
+    cons: ["plain on its own"],
+    tip: "With yogurt and a spoon of pickle on the side it is comfort food; when I am unwell I keep it plain and watery." },
+  { names: ["dhaba", "dhaba food", "dhaba karahi", "dhaba chai"], display: "Dhaba food", verdict: "sometimes",
+    blurb: "Dhaba food is cooked fresh over open flame, and the taste proves it — but the oil, the salt and the repeating frying oil in some places are the trade. I eat it, just not every day.",
+    pros: ["fresh and full of flavour", "cheap and filling"],
+    cons: ["a lot of oil and salt", "hygiene varies from place to place"],
+    tip: "I pick a busy dhaba where the karahi is made in front of me, ask for less oil, and drink packaged or boiled water there, not the open jug." },
+  { names: ["buffet", "hotel buffet", "buffet dinner"], display: "Hotel buffet", verdict: "sometimes",
+    blurb: "A hotel buffet is fun, and it is also the easiest place in the world to overeat — dozens of dishes, fried and creamy ones looking the best, and dessert included. I go with a plan or I regret it.",
+    pros: ["variety, something for everyone", "freshly made items"],
+    cons: ["easy to overeat", "fried and creamy dishes dominate", "heavy dessert pull"],
+    tip: "My plate rule at a buffet: one pass of salad and grilled items first, one small plate of whatever I truly like, and I skip stacking — second rounds taste worse anyway." },
+  { names: ["gola ganda", "ice gola", "chuski", "gola"], display: "Gola ganda", verdict: "treat",
+    blurb: "Gola ganda is a mountain of shaved ice flooded with sweet syrup — fun on a hot day, and honestly it is almost all sugar and ice.",
+    pros: ["cooling on a hot day", "cheap fun"],
+    cons: ["mostly sugar syrup", "ice hygiene depends on the water used"],
+    tip: "I ask for less syrup and clean ice from a busy stall — or I just get a cold watermelon slice, which does the same job." },
+  { names: ["fruit cake", "plum cake"], display: "Fruit cake", verdict: "sometimes",
+    blurb: "Fruit cake is a dense sweet cake studded with dried fruit — nicer than it gets credit for, but it is still cake: sugar, butter and white flour with fruit inside.",
+    pros: ["dried fruit gives some iron and fibre", "keeps for days"],
+    cons: ["sugar and butter", "refined flour"],
+    tip: "A thin slice with tea is how I'd have it — fruit cake is so dense that a small piece actually fills me up." },
+  { names: ["cheeku", "chikoo", "chiku", "sapodilla"], display: "Chikoo", verdict: "everyday",
+    blurb: "Chikoo (sapodilla) is a sweet, grainy fruit with a caramel-like taste — filling and full of fibre, though one of the sweeter fruits I eat.",
+    pros: ["fibre", "quick energy", "filling"],
+    cons: ["quite sweet", "slightly gritty texture not everyone likes"],
+    tip: "One ripe chikoo is a good snack; in a milkshake I count it as the dessert of that day." },
+  { names: ["falsa", "phalsa"], display: "Falsa", verdict: "everyday",
+    blurb: "Falsa is the tiny dark summer berry, sour and sweet at once — sold in small piles and eaten in a hurry. It is refreshing, hydrating and light.",
+    pros: ["refreshing and hydrating", "sour-sweet taste", "light"],
+    cons: ["seasonal only", "needs a very good wash"],
+    tip: "I rinse them well, eat them cool, and sprinkle a little salt and black salt — summer in a bowl." },
+  { names: ["jackfruit", "kathal"], display: "Jackfruit", verdict: "everyday",
+    blurb: "Jackfruit is two foods in one: the ripe fruit is sweet and fragrant, and the raw one cooks into a meaty curry. Either way it gives fibre, and the raw version is a genuinely good vegetable dish.",
+    pros: ["fibre", "raw kathal makes a filling curry", "ripe fruit is satisfying"],
+    cons: ["ripe jackfruit is quite sweet", "sticky to cut — oil the knife"],
+    tip: "For the curry I use raw jackfruit cooked soft with masala like a korma; the ripe one I eat fresh in small bowls." },
+  { names: ["tinda", "apple gourd", "round gourd"], display: "Tinda", verdict: "everyday",
+    blurb: "Tinda is the round light-green gourd — mild, watery and very easy to digest. It is one of those vegetables that sounds boring and eats better than it sounds, cooked with tomato and a little masala.",
+    pros: ["light and easy to digest", "hydrating"],
+    cons: ["mild taste"],
+    tip: "I cook it as a simple sabzi with tomato, or stuffed — and it is one of the safest vegetables for an upset stomach." },
+  { names: ["arvi", "arbi", "taro", "colocasia"], display: "Arvi", verdict: "everyday",
+    blurb: "Arvi is the starchy root cooked as a dry, tangy sabzi — filling and comforting, with more starch than a green vegetable, so I treat the portion like roti's friend, not salad.",
+    pros: ["filling and comforting", "good fibre"],
+    cons: ["starchy", "can be slimy if not cooked dry"],
+    tip: "I cook it dry with lemon or amchur so it does not turn sticky, and go easy on the roti alongside." },
+  { names: ["red meat", "gosht", "laal gosht", "meat"], display: "Red meat", verdict: "sometimes",
+    blurb: "Red meat — beef or mutton — gives strong protein, iron and B12, and I enjoy it. I just keep it a few times a week rather than daily, lean where I can, and cooked more often grilled or stewed than fried.",
+    pros: ["protein and iron", "filling", "B12"],
+    cons: ["saturated fat in fatty cuts", "heavy portions are easy"],
+    tip: "Lean cuts, grilled or stewed with vegetables, is my everyday way; fried gosht is the weekend version.",
+    careful: "If you have high cholesterol, a heart condition or gout, ask your doctor how often red meat fits for you." },
 );
 
 // ---- Matching ----
@@ -2205,6 +2330,16 @@ const RECIPES: Record<string, Recipe> = {
       "Blend the coriander, mint and green chilli with lemon and salt.",
       "Add a spoon of yogurt for a creamy chutney.",
       "Serve with kebab, samosa or sandwiches.",
+    ],
+  },
+  "anda paratha": {
+    title: "Anda paratha",
+    needs: "whole wheat dough, one egg per paratha, onion, green chilli, coriander, salt, a little oil",
+    steps: [
+      "Roll the dough into a small round, a bit thinner than a plain paratha.",
+      "Beat the egg with chopped onion, chilli, coriander and salt.",
+      "Put the roti on a medium pan for a few seconds, flip, then pour the egg mixture over it and flip again until the egg is cooked through.",
+      "Finish with a little oil on the edges until crisp, and serve hot with chai or chutney.",
     ],
   },
 };
@@ -2916,6 +3051,22 @@ My simple rules for eating out are small portions, salad with the meal, water in
 
 Do you eat out often, or only on special occasions?`;
 
+const FRUIT_PROS_CONS = `Fruit, as a whole, sits on my everyday list, and the good sides are real: fibre that keeps the stomach working, vitamins, natural sweetness instead of biscuits, and water content that helps on hot days. Most fruit fills me up for very few of the calories a packet snack would cost me.
+
+The honest downsides: fruit is sweet, and sweetness adds up — mangoes, grapes, bananas and dates are the easy ones to overeat; juice loses the fibre and hits the blood sugar much faster than the whole fruit; dried fruit is concentrated sugar in a tiny handful; and packaged fruit products on shelves are usually sugar water with fruit on the label.
+
+My own balance is simple: two to three servings of whole fruit a day, eaten rather than drunk, washed well; the sweeter ones in smaller portions; and if I have diabetes I keep the portions small and ask my doctor what fits.
+
+Was there a specific fruit you wanted the good and bad of?`;
+
+const VEGETABLE_PROS_CONS = `Vegetables are the one food group I never argue with. The good sides: fibre, vitamins, minerals, and so little energy per plate that they fill me up without weighing me down; the green ones bring iron and folate, the orange ones vitamin A, and the watery gourds are the gentlest things I can eat on an off day.
+
+The honest downsides are small but real: raw sprouts and unwashed salad can carry germs, so I wash everything well; a few — cauliflower, cabbage, radish — cause gas for some people; starchy ones like potato and arvi add up like bread, not like salad; and vegetables cooked into heavy oil or cream lose most of the advantage they started with.
+
+My own habit is half the plate vegetables at lunch and dinner, cooked lightly, and the portion of oil decides how healthy the sabzi really is.
+
+Was there a specific vegetable you wanted the good and bad of?`;
+
 const CALORIES_GUIDE = `Here are rough ranges I go by — not exact numbers, since size, recipe and portion change them a lot. A medium roti — roughly 70–100 calories. A small plate of cooked white rice — roughly 150–250 calories. A small bowl of daal — roughly 100–200 calories. One boiled egg — roughly 60–80 calories. One medium banana — roughly 90–120 calories. One glass of milk — roughly 120–160 calories. One slice of bread — roughly 70–100 calories.
 
 For me, exact calories matter less than the portion. A small plate of an everyday food beats a big plate of a treat — and plain, home-cooked food is almost always lighter than packaged or fried food.
@@ -3018,6 +3169,12 @@ function substitutionAnswer(foods: { entry: FoodEntry }[]): string {
 
 /** Topic routing: health and meal topics when no specific food is named. */
 function topicGuide(norm: string): string | null {
+  // Category pros-and-cons first, so "pros and cons of fruits" reaches the
+  // fruit guide instead of the generic fallback (specific foods are handled
+  // earlier by prosConsAnswer).
+  const goodBad = /\b(pros and cons|faide|faidy|nuksan|nuksaan|benefits?|advantages?)\b/.test(norm);
+  if (goodBad && /\b(fruits?|phal)\b/.test(norm)) return FRUIT_PROS_CONS;
+  if (goodBad && /\b(vegetables?|sabzi|sabzian|sabziyan)\b/.test(norm)) return VEGETABLE_PROS_CONS;
   if (/\b(diabetes|diabetic|sugar ka marz|shakkar ka marz)\b/.test(norm)) return DIABETES_GUIDE;
   if (/\b(blood pressure|hypertension|\bbp\b)\b/.test(norm)) return BP_GUIDE;
   if (/\b(weight loss|lose weight|losing weight|wazan kam|motapa kam)\b/.test(norm)) return WEIGHT_LOSS_GUIDE;
@@ -3230,7 +3387,7 @@ export function answerLocally(question: string, ctx?: { barcodeData?: LocalBarco
   // ---- Topic intents (v2): calories, substitutions, pros/cons, guides ----
   if (/\bcalori/.test(norm)) return caloriesAnswer(foods);
   if (/\binstead of\b|\breplace\b|\bsubstitut|\bki jagah\b|\bbadlay\b/.test(norm)) return substitutionAnswer(foods);
-  if (/\bpros and cons\b|\bfaide\b|\bnuksan\b/.test(norm) && foods.length > 0) return prosConsAnswer(foods[0].entry);
+  if (/\bpros and cons\b|\bfaide\b|\bfaidy\b|\bnuksan\b|\bnuksaan\b|\bbenefits?\b|\badvantages?\b/.test(norm) && foods.length > 0) return prosConsAnswer(foods[0].entry);
   if (foods.length === 0) {
     const topic = topicGuide(norm);
     if (topic) return topic;

@@ -25,6 +25,25 @@ function friendlyError(status: number, fallback: string): string {
   return fallback;
 }
 
+// Photo quality warning (preview v7, Test 18 gap): computed on-device in
+// the image pipeline, this warns BEFORE a blurry or dark photo is sent.
+// Advice only — sending is never blocked, because a photo of food (not a
+// label) needs no readable text. First person, plain paragraph, no
+// headings — same answer style as FOODLENS replies.
+function photoQualityNotice(images: ChatImage[]): string | null {
+  const names = (list: ChatImage[]) => list.map((i) => i.name).join(", ");
+  const blurry = images.filter((i) => i.quality?.blurry || i.quality?.flat);
+  const dark = images.filter((i) => i.quality?.dark);
+  const parts: string[] = [];
+  if (blurry.length > 0) {
+    parts.push(`This photo looks blurry to me: ${names(blurry)}. If it is a label, I may not be able to read the ingredients from it reliably, and I would rather you retake it steady, close to the label and in focus than have me guess and get it wrong. If it is just a photo of food, you can send it as it is.`);
+  }
+  if (dark.length > 0) {
+    parts.push(`This photo looks quite dark to me: ${names(dark)}. Dim light is where I misread labels most, so I would retake it with more light on the label before sending it for a label check.`);
+  }
+  return parts.length > 0 ? parts.join(" ") : null;
+}
+
 export default function Home() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -633,6 +652,9 @@ export default function Home() {
             Discussing scanned product: {pendingBarcode.name || pendingBarcode.code} (barcode {pendingBarcode.code}) — product data will be sent as untrusted data, not as message text.{" "}
             <button className="btn secondary" type="button" onClick={() => setPendingBarcode(null)}>Remove</button>
           </p>
+        )}
+        {photoQualityNotice(attachments) && (
+          <p className="notice" role="status">{photoQualityNotice(attachments)}</p>
         )}
         <form className="composer" onSubmit={(e) => { e.preventDefault(); if (editingId && active) { const idx = active.messages.findIndex((x) => x.id === editingId); const history = active.messages.slice(0, idx); const trimmed = { ...active, messages: history }; setEditingId(null); saveChat(trimmed).then(() => send(undefined, trimmed, history)); } else send(); }}
           onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files); }}

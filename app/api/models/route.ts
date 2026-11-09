@@ -9,6 +9,12 @@ export const dynamic = "force-dynamic";
 // The client key travels in the Authorization header, never in the URL
 // (URLs are logged and kept in history); the server env key is used
 // when no client key is supplied.
+//
+// Hang fix (preview v7): both fetches below carry a hard 10-second
+// AbortSignal timeout. Without it a stalled upstream (TLS handshake
+// that never finishes, a hung connection) kept this route hanging
+// indefinitely — observed twice in checks. 10 s is enough for a real
+// model list; on timeout the route returns 502 instead of hanging.
 export async function GET(req: NextRequest) {
   if (!rateLimit(req, "models")) return jsonError("Too many requests.", 429);
   const provider = req.nextUrl.searchParams.get("provider") || "";
@@ -22,7 +28,7 @@ export async function GET(req: NextRequest) {
       // Ignored entirely in production; non-localhost is a 400.
       const geminiBase = resolveGeminiBaseUrl();
       if (!geminiBase.ok) return jsonError(geminiBase.error, 400);
-      const res = await fetch(`${geminiBase.baseUrl}/v1beta/models?pageSize=100`, { headers: { "x-goog-api-key": key } });
+      const res = await fetch(`${geminiBase.baseUrl}/v1beta/models?pageSize=100`, { headers: { "x-goog-api-key": key }, signal: AbortSignal.timeout(10_000) });
       if (!res.ok) return jsonError("Could not list models.", 502);
       const data = (await res.json()) as { models?: { name?: string; supportedGenerationMethods?: string[] }[] };
       const models = (data.models || []).filter((m) => m.supportedGenerationMethods?.includes("generateContent")).map((m) => (m.name || "").replace("models/", "")).filter(Boolean);
@@ -35,7 +41,7 @@ export async function GET(req: NextRequest) {
         if (!isSafeHttpsUrl(customBaseUrl)) return jsonError("Invalid base URL.", 400);
         base = customBaseUrl.replace(/\/$/, "");
       }
-      const res = await fetch(`${base}/models`, { headers: { Authorization: `Bearer ${key}` }, redirect: "manual" });
+      const res = await fetch(`${base}/models`, { headers: { Authorization: `Bearer ${key}` }, redirect: "manual", signal: AbortSignal.timeout(10_000) });
       if (res.status >= 300 && res.status < 400) return jsonError("Could not list models.", 502);
       if (!res.ok) return jsonError("Could not list models.", 502);
       const data = (await res.json()) as { data?: { id?: string }[] };

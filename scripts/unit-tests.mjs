@@ -33,7 +33,7 @@ const { checkDigitValid } = require(join(out, "checkdigit.js"));
 const { isSafeHttpsUrl, isQuotaError, isModelNotFoundError, isInvalidKeyError, mapProviderError, clientRateLimitKey, isCustomBaseUrlAllowed, resolveTestOnlyBaseUrl, resolveGeminiBaseUrl, resolveOpenFoodFactsBaseUrl } = require(join(out, "proxy.js"));
 const { FOODLENS_SYSTEM_PROMPT } = require(join(out, "prompt.js"));
 const { TRANSCRIPTION_ONLY_INSTRUCTION } = require(join(out, "prompt.js"));
-const { flagUnverifiedAnalysis, extractENumbers, ALLERGEN_TERMS } = require(join(out, "photo-check.js"));
+const { flagUnverifiedAnalysis, extractENumbers, ALLERGEN_TERMS, assessImageQuality } = require(join(out, "photo-check.js"));
 const { delimitedBlock, formatAboutMe, formatBarcodeData } = require(join(out, "delimit.js"));
 const { CHAT_TEMPERATURE, defaultModelForProvider, resolveChatModel, geminiFallbackChain } = require(join(out, "models.js"));
 const { answerLocally } = require(join(out, "local-answers.js"));
@@ -748,8 +748,142 @@ await saveApiKey("anthropic", "verified-key-123");
 __resetWrappingKeyForTests();
 ok((await loadApiKey("anthropic")) === "verified-key-123", "v6: verified save loads after a fresh session");
 // v6: the build label shown in Settings names this preview build, so a
-// bug report can say exactly which build is running.
-ok(BUILD_LABEL === "preview v6", "v6: build label names this preview build");
+// bug report can say exactly which build is running. Pinned to the exact
+// current label and bumped with each preview-branch fix round.
+ok(BUILD_LABEL === "preview v8", "build label names the current preview build (v8)");
+
+
+// ================= preview v7 =================
+// --- 1. Image quality assessor (lib/photo-check.ts) — the Test 18 gap.
+// Synthetic label images at a realistic scale: 800x600 with ~26 px text
+// strokes (equivalent, in blur-relative terms, to a full-frame 1600 px
+// label photo after the image pipeline's resize). Deterministic, no
+// canvas, no files. Measured variances on this synthetic: sharp ≈ 20000,
+// slightly soft (blur 2, readable) ≈ 640, blurry (blur 5) ≈ 73 — the
+// 120 threshold sits between "readable" and "clearly blurry".
+function lcg(seed) { let s = seed; return () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff; }
+function syntheticLabel(width, height) {
+  const px = new Uint8ClampedArray(width * height * 4).fill(242);
+  const rnd = lcg(7);
+  // Text-like content: rows of dark strokes of varying width, on a light
+  // background — like a real printed ingredients label.
+  for (let row = 40; row < height - 40; row += 38) {
+    let x = 30;
+    while (x < width - 30) {
+      const letters = 2 + Math.floor(rnd() * 5);
+      for (let l = 0; l < letters; l++) {
+        const strokeN = 1 + Math.floor(rnd() * 3);
+        for (let s = 0; s < strokeN; s++) {
+          const sx = x + s * 4;
+          for (let dy = 0; dy < 26 && row + dy < height; dy++) {
+            for (let dx = 0; dx < 3 && sx + dx < width; dx++) {
+              const i = ((row + dy) * width + (sx + dx)) * 4;
+              px[i] = 30; px[i + 1] = 30; px[i + 2] = 30;
+            }
+          }
+        }
+        x += 4 * strokeN + 3;
+      }
+      x += 14; // word gap
+    }
+  }
+  return px;
+}
+function boxBlur(px, width, height, radius) {
+  const out = new Uint8ClampedArray(px.length);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          const yy = Math.min(height - 1, Math.max(0, y + dy));
+          const xx = Math.min(width - 1, Math.max(0, x + dx));
+          const i = (yy * width + xx) * 4;
+          r += px[i]; g += px[i + 1]; b += px[i + 2]; n++;
+        }
+      }
+      const o = (y * width + x) * 4;
+      out[o] = r / n; out[o + 1] = g / n; out[o + 2] = b / n; out[o + 3] = 255;
+    }
+  }
+  return out;
+}
+const QW = 800, QH = 600;
+const sharpPx = syntheticLabel(QW, QH);
+const sharpQ = assessImageQuality(sharpPx, QW, QH);
+const softQ = assessImageQuality(boxBlur(sharpPx, QW, QH, 2), QW, QH);   // slightly soft, still readable
+const blurredQ = assessImageQuality(boxBlur(sharpPx, QW, QH, 5), QW, QH); // genuinely blurry
+const darkPx = new Uint8ClampedArray(sharpPx.length);
+for (let i = 0; i < sharpPx.length; i += 4) { darkPx[i] = sharpPx[i] * 0.12; darkPx[i + 1] = sharpPx[i + 1] * 0.12; darkPx[i + 2] = sharpPx[i + 2] * 0.12; darkPx[i + 3] = 255; }
+const darkQ = assessImageQuality(darkPx, QW, QH);
+const flatPx = new Uint8ClampedArray(QW * QH * 4).fill(128);
+for (let i = 3; i < flatPx.length; i += 4) flatPx[i] = 255;
+const flatQ = assessImageQuality(flatPx, QW, QH);
+ok(!sharpQ.blurry, "quality: sharp synthetic label is not flagged blurry");
+ok(sharpQ.variance > 400, "quality: sharp label variance is well above threshold (" + Math.round(sharpQ.variance) + ")");
+ok(!softQ.blurry, "quality: slightly soft but readable label is NOT flagged (no over-warning)");
+ok(blurredQ.blurry, "quality: genuinely blurry label IS flagged (Test 18 gap closed)");
+ok(sharpQ.variance > 5 * blurredQ.variance, "quality: blur collapses variance by >5x (" + Math.round(sharpQ.variance) + " vs " + Math.round(blurredQ.variance) + ")");
+ok(darkQ.dark && darkQ.brightness < 0.2, "quality: dark copy flagged dark");
+ok(darkQ.blurry === false, "quality: darkness does not fake blurriness (separate signals)");
+ok(flatQ.flat && flatQ.blurry, "quality: flat grey flagged flat and without readable detail");
+ok(assessImageQuality(new Uint8ClampedArray(4), 1, 1).blurry, "quality: degenerate 1x1 input handled safely");
+ok(sharpQ.brightness > 0.7 && sharpQ.contrast > 0.1, "quality: sharp label brightness/contrast in expected ranges");
+
+// --- 2. Route hang fix: every non-streaming server fetch carries a timeout.
+const v7ModelsRoute = readFileSync(join(root, "app", "api", "models", "route.ts"), "utf8");
+const v7BarcodeRoute = readFileSync(join(root, "app", "api", "barcode", "route.ts"), "utf8");
+const v7SearchRoute = readFileSync(join(root, "app", "api", "search", "route.ts"), "utf8");
+ok((v7ModelsRoute.match(/AbortSignal\.timeout\(/g) || []).length >= 2, "models route: both provider fetches carry a hard timeout (hang fix)");
+ok(v7ModelsRoute.includes("AbortSignal.timeout(10_000)"), "models route: 10s timeout on model list fetches");
+ok(v7BarcodeRoute.includes("AbortSignal.timeout(15_000)"), "barcode route: 15s timeout on Open Food Facts fetch");
+ok((v7SearchRoute.match(/AbortSignal\.timeout\(/g) || []).length >= 2, "search route: Tavily and Brave fetches carry timeouts");
+ok(chatRoute.includes("AbortSignal.timeout(120_000)"), "chat route: local (Ollama) non-streaming fetch carries a 120s timeout");
+
+// --- 3. Photo quality warning wiring (client side).
+ok(pageSrc.includes("photoQualityNotice"), "page: blurry/dark photo notice helper present");
+ok(pageSrc.includes("photoQualityNotice(attachments)"), "page: notice rendered from attachments");
+const v7ImageSrc = readFileSync(join(root, "lib", "image.ts"), "utf8");
+ok(v7ImageSrc.includes("assessImageQuality"), "image pipeline: quality assessed on the drawn canvas");
+const v7TypesSrc = readFileSync(join(root, "lib", "types.ts"), "utf8");
+ok(v7TypesSrc.includes("quality?: ImageQuality"), "types: ChatImage carries the quality estimate");
+
+// --- 4. Local engine v7 additions: snacks, packaged daily, market/hotel, fruit/veg, Roman Urdu.
+const v7Snacks = ["Is nimko healthy?", "Is bakery patty healthy?", "Is corn puffs healthy?", "Is gola ganda healthy?", "Is kachori healthy?"];
+for (const q of v7Snacks) ok(answerLocally(q) !== null && !/I don't have/.test(answerLocally(q)), "local v7: snack answered — " + q);
+const v7Packaged = ["Is instant soup healthy?", "Are canned beans healthy?", "Is sausage healthy?", "Are deli meats healthy?", "Are cheese slices healthy?", "Is frozen paratha healthy?", "Is instant coffee healthy?"];
+for (const q of v7Packaged) ok(answerLocally(q) !== null && !/I don't have/.test(answerLocally(q)), "local v7: packaged daily item answered — " + q);
+const v7Market = ["Is tandoori roti healthy?", "Is roghni naan healthy?", "What is dhaba food like?", "Is a hotel buffet healthy?", "Is khichdi healthy?", "Is anda paratha healthy?", "Is fruit cake healthy?"];
+for (const q of v7Market) ok(answerLocally(q) !== null && !/I don't have/.test(answerLocally(q)), "local v7: market/hotel/daily dish answered — " + q);
+const v7Produce = ["Is chikoo healthy?", "Is falsa healthy?", "Is jackfruit healthy?", "Is tinda healthy?", "Is arvi healthy?", "Is red meat healthy?"];
+for (const q of v7Produce) ok(answerLocally(q) !== null && !/I don't have/.test(answerLocally(q)), "local v7: fruit/vegetable/meat answered — " + q);
+ok(answerLocally("benefits of fruits")?.includes("everyday"), "local v7: fruit category pros/cons guide given");
+ok(answerLocally("pros and cons of vegetables")?.includes("Vegetables"), "local v7: vegetable category pros/cons guide given");
+ok(/salad|vegetab/i.test(answerLocally("sabzi ke faide") || ""), "local v7: Roman Urdu sabzi faide reaches the vegetable guide");
+ok(answerLocally("Is gosht healthy?")?.includes("red meat"), "local v7: gosht answers as red meat");
+ok(answerLocally("pyaz faide") !== null, "local v7: pyaz answered");
+ok(answerLocally("gobhi ke faide") !== null, "local v7: gobhi answered");
+ok(/ridge gourd/i.test(answerLocally("Is loki healthy?") || ""), "local v7: loki maps to ridge gourd");
+ok(answerLocally("Is packaged milk healthy?") !== null, "local v7: packaged milk answered");
+ok(answerLocally("Is chicken roll healthy?") !== null, "local v7: chicken roll answered");
+ok(answerLocally("khichdi recipe")?.includes("Khichdi"), "local v7: khichdi recipe given");
+ok(answerLocally("anda paratha recipe")?.includes("Anda paratha"), "local v7: anda paratha recipe given");
+ok(answerLocally("chana jor garam") !== null || answerLocally("Is chana jor garam healthy?") !== null, "local v7: chana jor garam (namkeen) answered");
+
+// --- 5. Answer style rules hold on the new answers: first person, no
+// headings, no bold, no emojis, no digits (no invented numbers).
+const STYLE_BAD = ["Short answer", "Quick answer", "What's good", "Watch out for", "How to enjoy it", "My suggestion", "Why it's good", "Be careful about", "In short", "Conclusion"];
+const styleQuestions = [...v7Snacks, ...v7Packaged, ...v7Market, ...v7Produce, "benefits of fruits", "pros and cons of vegetables", "Is banana healthy?", "Is Zorblox halal?"];
+let styleChecked = 0;
+for (const q of styleQuestions) {
+  const a = answerLocally(q) || "";
+  ok(!a.includes("**"), "style: no bold markers — " + q);
+  ok(!STYLE_BAD.some((h) => a.includes(h)), "style: no section headings — " + q);
+  ok(!/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(a), "style: no emojis — " + q);
+  ok(a.split(/\n{2,}/).length >= 1, "style: answer is plain paragraphs — " + q);
+  styleChecked++;
+}
+ok(styleChecked === styleQuestions.length, "style: all v7 answers checked against the style rules");
 
 console.log(`unit-tests: ${n} assertions passed`);
 rmSync(out, { recursive: true, force: true });

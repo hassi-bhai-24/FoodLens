@@ -148,6 +148,11 @@ export async function POST(req: NextRequest) {
       const res = await fetch(`${base}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // Non-streaming JSON call: a hard 120-second timeout turns a
+        // hung local server into a 502 instead of hanging the route
+        // forever. Streaming provider calls below are left without a
+        // signal on purpose — aborting would cut an in-progress stream.
+        signal: AbortSignal.timeout(120_000),
         body: JSON.stringify({
           model: resolveChatModel("local", model, process.env),
           stream: false,
