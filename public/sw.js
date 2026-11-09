@@ -16,7 +16,9 @@
 // reaches every phone on the next load.
 // v7 (preview v12): bumped again so the Groq provider and the
 // server-first no-key flow reach every phone on the next load.
-const CACHE = "foodlens-shell-v7";
+// v8 (preview v13): bumped again so the non-streaming Groq path
+// reaches every phone on the next load.
+const CACHE = "foodlens-shell-v8";
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/manifest.webmanifest"])).catch(() => undefined));
   self.skipWaiting();

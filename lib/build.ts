@@ -19,4 +19,7 @@
 // preview v12: Groq provider (free tier, gpt-oss-120b default) with a
 // shared server key, and server-first no-key flow — the client tries
 // the server and falls back to local answers on 401/no_key or offline.
-export const BUILD_LABEL = "preview v12";
+// preview v13: Groq answers are fetched non-streaming and relayed as
+// SSE deltas, because Groq's streaming took ~90 s to deliver a reply
+// and tripped the client's 40 s watchdog.
+export const BUILD_LABEL = "preview v13";

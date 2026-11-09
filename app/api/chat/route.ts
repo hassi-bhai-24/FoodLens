@@ -340,6 +340,49 @@ export async function POST(req: NextRequest) {
       ],
     };
     if (b.searchEnabled && b.provider === "openai") payload.tools = [{ type: "web_search" }];
+    // v13: Groq's streaming is too slow to use (measured 2026-11-09:
+    // a streamed gpt-oss-120b answer took ~90 s before its content
+    // arrived in one burst, and later streaming calls never returned
+    // headers at all, so the client gave up at its 40 s watchdog
+    // while the server kept waiting on an upstream that only sent
+    // empty deltas). A non-streaming Groq call is fast (0.2 s of
+    // generation measured the same day), so fetch the whole reply and
+    // relay it as SSE deltas — the client still renders it word by
+    // word, and the watchdogs never see a stall.
+    if (b.provider === "groq") {
+      const groqAttempt = await fetchWithHeadersTimeout(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ ...payload, stream: false }),
+        redirect: "manual",
+      }, PROVIDER_HEADERS_TIMEOUT_MS, fetch, req.signal);
+      if (!groqAttempt.res) {
+        if (groqAttempt.timedOut) return jsonError(PROVIDER_TIMEOUT_MESSAGE, 504);
+        return jsonError("Could not reach the AI provider. Check your connection and try again.", 502);
+      }
+      const groqRes = groqAttempt.res;
+      if (groqRes.status >= 300 && groqRes.status < 400) return jsonError("The AI provider returned an unexpected redirect. Check your base URL and try again.", 502);
+      if (!groqRes.ok) {
+        const mapped = mapProviderError(groqRes.status, await readBodyBounded(groqRes));
+        return jsonError(mapped.message, mapped.status);
+      }
+      const groqJson = (await groqRes.json()) as { choices?: { message?: { content?: string } }[] };
+      const groqText = groqJson.choices?.[0]?.message?.content || "";
+      if (!groqText) return jsonError("The provider returned an empty reply.", 502);
+      const encoder = new TextEncoder();
+      const parts = groqText.split(/(\s+)/).filter((p) => p.length > 0);
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ model: openaiModel })}\n\n`));
+          for (let i = 0; i < parts.length; i += 2) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ delta: parts.slice(i, i + 2).join("") })}\n\n`));
+          }
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        },
+      });
+      return new Response(stream, { headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" } });
+    }
     const attempt = await fetchWithHeadersTimeout(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },

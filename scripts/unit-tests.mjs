@@ -782,7 +782,7 @@ ok((await loadApiKey("anthropic")) === "verified-key-123", "v6: verified save lo
 // v6: the build label shown in Settings names this preview build, so a
 // bug report can say exactly which build is running. Pinned to the exact
 // current label and bumped with each preview-branch fix round.
-ok(BUILD_LABEL === "preview v12", "build label names the current preview build (v12)");
+ok(BUILD_LABEL === "preview v13", "build label names the current preview build (v13)");
 
 
 // ================= preview v7 =================
@@ -1075,11 +1075,13 @@ ok(v9PageSrc.includes("The connection was lost before the reply finished"), "v9 
 ok(v9PageSrc.includes("AbortSignal.timeout(30_000)"), "v9 client: Test connection is bounded too");
 ok(!v9PageSrc.includes("Something went wrong. Your message is saved"), "v9 client: the generic 'Something went wrong' fallback is gone");
 const v9SwSrc = readFileSync(join(root, "public", "sw.js"), "utf8");
-ok(v9SwSrc.includes('const CACHE = "foodlens-shell-v7"'), "v12 sw: app-shell cache bumped to v7 so stale shells are purged");
+ok(v9SwSrc.includes('const CACHE = "foodlens-shell-v8"'), "v13 sw: app-shell cache bumped to v8 so stale shells are purged");
 ok(v9PageSrc.includes("HF_MODEL_SUGGESTIONS"), "v11 client: Settings shows Hugging Face model suggestions");
 ok(v9PageSrc.includes("Leave empty to use the default"), "v11 client: model field explains the default");
 ok(v9PageSrc.includes("replyLocally"), "v12 client: local answers reuse one helper");
 ok(v9PageSrc.includes('"no_key"'), "v12 client: no-key server response falls back to local answers");
+const chatRouteSrc = readFileSync(join(root, "app", "api", "chat", "route.ts"), "utf8");
+ok(chatRouteSrc.includes('b.provider === "groq"') && chatRouteSrc.includes("stream: false"), "v13 route: Groq is fetched non-streaming and relayed as SSE deltas");
 
 console.log(`unit-tests: ${n} assertions passed`);
 rmSync(out, { recursive: true, force: true });
