@@ -12,7 +12,7 @@
 // a new coding, hacking, injection or emergency phrasing that falls in
 // the same category must be caught by the same rule.
 
-export type GuardResult = { kind: "redirect" | "safety" | "clarify"; text: string };
+export type GuardResult = { kind: "redirect" | "safety" | "clarify" | "greeting"; text: string };
 
 const REDIRECT_EN =
   "I'm FOODLENS, a food-focused assistant, so I can't help with that one. But ask me anything about what you eat, cook or buy, or send a photo of a snack. For example: is this biscuit healthy, or what can I cook with chicken and rice?";
@@ -27,6 +27,89 @@ function redirectFor(text: string): string {
   if (/[ٹڈڑںے]/.test(text)) return REDIRECT_URDU;
   if (/[\u0600-\u06FF]/.test(text)) return REDIRECT_ARABIC;
   return REDIRECT_EN;
+}
+
+// v9: pure greetings and identity questions are answered here, from
+// code, and never touch the provider. Why: on the user's phone a plain
+// "hello" with a saved key sat on "Thinking…" for five minutes while
+// the provider stalled, then failed. A greeting is deterministic —
+// there is nothing a model needs to decide — so it answers instantly
+// the same way with or without a key, like the other guards. A
+// greeting WITH a food question ("hello, is banana healthy?") is NOT
+// intercepted and still goes to the model, and a photo message is
+// never intercepted by the greeting (it needs vision).
+const GREETING_EN =
+  "Hello! I'm FOODLENS, your food-only assistant. Ask me anything about what you eat, cook or buy — for example, is this biscuit healthy, what can I cook with chicken and rice, or what does this label mean? You can also scan a barcode, or send a photo of a label or a plate and I will help you read it.";
+const GREETING_URDU =
+  "سلام! میں FOODLENS ہوں، صرف خوراک سے متعلق مددگار۔ جو کچھ آپ کھاتے، پکاتے یا خریدتے ہیں اس کے بارے میں کچھ بھی پوچھیں — مثلاً یہ بسکٹ صحت مند ہے یا نہیں، مرغی اور چاول سے کیا بنایا جائے، یا یہ لیبل کیا کہتا ہے؟ آپ بارکوڈ بھی سکین کر سکتے ہیں، یا لیبل یا پلیٹ کی تصویر بھیج سکتے ہیں، میں پڑھنے میں مدد کروں گا۔";
+
+// Greeting heads: a message made only of these words, fillers and the
+// tails below is a pure greeting. \b-bounded so "him", "you" (from
+// "yo") or "hissing" never match.
+const GREETING_HEADS: RegExp[] = [
+  /^(h+i+|helo+|hello+|hey+|yo|sup)\b/,
+  /^(salaam|salam|assalam|assalamualaikum|as salam|as-?salamu?)\b/,
+  /^aoa\b/,
+  /^good (morning|afternoon|evening)\b/,
+  /^greetings\b/,
+];
+// Words that may follow a greeting word without making it a question.
+const GREETING_FILLERS = /^(there|foodlens|bot|bhai|janab|everyone|guys|o|u|wa|alaikum|walaikum)\b/;
+// A greeting may be followed by a how-are-you or identity phrase and
+// still be a pure greeting.
+const GREETING_TAILS: RegExp[] = [
+  /^how are you( today| now| foodlens)?\b/,
+  // "how ?'?s" also matches the normalised forms "hows" / "how s"
+  // (punctuation is turned into spaces before matching).
+  /^how ?'?s it going\b/,
+  /^how r u\b/,
+  /^what ?'?s up\b/,
+  /^kaise ho\b/,
+  /^kaise hain aap\b/,
+  /^kya haal\b/,
+  /^who are you\b/,
+  /^who r u\b/,
+  /^what are you\b/,
+  /^what can you do\b/,
+];
+// Common pure Urdu-script greetings, compared with spaces and
+// punctuation stripped ("السلام علیکم" -> "السلامعلیکم").
+const URDU_GREETINGS = new Set(["السلامعلیکم", "اسلامعلیکم", "سلام", "وعلیکمالسلام", "سلامعلیکم"]);
+
+function isPureGreeting(raw: string): boolean {
+  const t = raw.toLowerCase().replace(/[!,.?;:'"()-]+/g, " ").replace(/\s+/g, " ").trim();
+  if (t && stripGreetingWords(t) === "") return true;
+  const urduCompact = raw.replace(/[\s!،؟۔,.?;:]+/g, "");
+  return urduCompact.length > 0 && URDU_GREETINGS.has(urduCompact);
+}
+
+function stripGreetingWords(s: string): string {
+  let rest = s;
+  let changed = true;
+  while (changed && rest) {
+    changed = false;
+    for (const re of [...GREETING_HEADS, ...GREETING_TAILS]) {
+      const m = rest.match(re);
+      if (m) {
+        rest = rest.slice(m[0].length).trim();
+        changed = true;
+        break;
+      }
+    }
+    if (!changed) {
+      const f = rest.match(GREETING_FILLERS);
+      if (f) {
+        rest = rest.slice(f[0].length).trim();
+        changed = true;
+      }
+    }
+  }
+  return rest;
+}
+
+function greeting(text: string): GuardResult | null {
+  if (!isPureGreeting(text)) return null;
+  return { kind: "greeting", text: /[\u0600-\u06FF]/.test(text) ? GREETING_URDU : GREETING_EN };
 }
 
 
@@ -180,7 +263,7 @@ function safety(text: string): GuardResult | null {
   ) {
     return {
       kind: "safety",
-      text: "When in doubt, throw it out. Smell and appearance can't prove expired food is safe. Don't taste food to check it — if it's past its date, stored wrongly, or you're unsure, it's safer not to eat it.",
+      text: "No, I wouldn't eat expired food. Once food is past its date I can't tell from smell or looks whether it's safe, and tasting it to check isn't worth the risk. If I'm not sure how it was stored or it's past the date, I'd throw it out.",
     };
   }
   if (
@@ -265,7 +348,9 @@ function injection(text: string): GuardResult | null {
 
 function nonFood(text: string): GuardResult | null {
   const t = text.toLowerCase().trim();
-  // Greetings and identity questions stay with the model (warm answers).
+  // Greeting OPENERS (also greeting + food question, which is not a
+  // pure greeting) pass through here to the model; pure greetings were
+  // already answered by the greeting guard above (v9).
   if (/^(hi|hello|hey|salaam|assalam|salam|good (morning|evening|afternoon)|who are you|what can you do|what are you)\b/.test(t)) return null;
   // Batch 3 food-context allowlist: trigger words in a food context must
   // reach the model (stock, hack, cricket, Java, date, fasting, ...).
@@ -328,6 +413,12 @@ export function classifyUserText(text: string, hasImages = false): GuardResult |
       text: "That message looks like repeated characters, so I can't tell what you're asking. Please type your food question in words, or send a photo of a label or a plate.",
     };
   }
-  void hasImages;
+  // v9: pure greetings answer instantly (see greeting() above) — but
+  // never when a photo is attached: a photo must reach the vision
+  // provider for transcription, whatever its caption says.
+  if (!hasImages) {
+    const g = greeting(trimmed);
+    if (g) return g;
+  }
   return safety(text) || injection(text) || nonFood(text);
 }

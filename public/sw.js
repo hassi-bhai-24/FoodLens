@@ -1,6 +1,24 @@
 // App-shell service worker. Caches the shell only; chat data lives in
 // IndexedDB and AI/barcode calls always go to the network.
-const CACHE = "foodlens-shell-v1";
+// Bump the CACHE name whenever this file's caching behaviour changes:
+// the activate handler deletes every cache whose name is not CACHE, so
+// a stale name is the only thing that ever purges old entries. The
+// previous name (foodlens-shell-v1) never changed, so old shell entries
+// were never purged. Fetch is network-first, so a stale shell is only
+// served when the network fails — but a failed fetch must not silently
+// serve an old build forever, which is what an unpurged cache did.
+// v4 (preview v9): bumped again so every phone that ever cached an
+// older shell (v1/v3) drops it and picks up the v9 app code — a stale
+// cached shell was one suspect in the hang-then-fail report.
+// v5 (preview v10): bumped again so the new Hugging Face provider
+// option in Settings reaches every phone on the next load.
+// v6 (preview v11): bumped again so the model picker in Settings
+// reaches every phone on the next load.
+// v7 (preview v12): bumped again so the Groq provider and the
+// server-first no-key flow reach every phone on the next load.
+// v8 (preview v13): bumped again so the non-streaming Groq path
+// reaches every phone on the next load.
+const CACHE = "foodlens-shell-v8";
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/manifest.webmanifest"])).catch(() => undefined));
   self.skipWaiting();

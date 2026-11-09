@@ -1,5 +1,7 @@
+import type { ImageQuality } from "./photo-check";
+
 export type Role = "user" | "assistant";
-export type ProviderId = "gemini" | "openai" | "anthropic" | "compatible" | "local";
+export type ProviderId = "gemini" | "openai" | "anthropic" | "huggingface" | "groq" | "compatible" | "local";
 
 export interface ChatImage {
   id: string;
@@ -9,6 +11,8 @@ export interface ChatImage {
   dataUrl: string;
   width: number;
   height: number;
+  /** On-device quality estimate (blur/dark/flat), computed in the image pipeline. */
+  quality?: ImageQuality;
 }
 
 export interface ChatMessage {
@@ -19,7 +23,7 @@ export interface ChatMessage {
   createdAt: number;
   feedback?: 1 | -1;
   sources?: { title: string; url: string }[];
-  status?: "streaming" | "done" | "error";
+  status?: "streaming" | "done" | "error" | "typing";
   /** Model that produced this assistant reply (SSE model event), if known. */
   model?: string;
   /** Two-step photo flow: which step produced this assistant reply. */
@@ -68,6 +72,8 @@ export const PROVIDER_CAPABILITIES: ProviderCapability[] = [
   { id: "gemini", label: "Google Gemini", vision: true, streaming: true, search: true, maxImages: 6, maxImageBytes: 20 * 1024 * 1024 },
   { id: "openai", label: "OpenAI", vision: true, streaming: true, search: true, maxImages: 6, maxImageBytes: 20 * 1024 * 1024 },
   { id: "anthropic", label: "Anthropic Claude", vision: true, streaming: true, search: false, maxImages: 6, maxImageBytes: 5 * 1024 * 1024 },
+  { id: "huggingface", label: "Hugging Face", vision: true, streaming: true, search: false, maxImages: 6, maxImageBytes: 20 * 1024 * 1024 },
+  { id: "groq", label: "Groq", vision: false, streaming: true, search: false, maxImages: 0, maxImageBytes: 0 },
   { id: "compatible", label: "OpenAI-compatible", vision: true, streaming: true, search: false, maxImages: 6, maxImageBytes: 20 * 1024 * 1024 },
   { id: "local", label: "Local (Ollama / llama.cpp)", vision: false, streaming: true, search: false, maxImages: 0, maxImageBytes: 0 },
 ];

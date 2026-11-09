@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ api_key: tavily, query: q, max_results: 5, include_domains: ["who.int", "fda.gov", "usda.gov", "efsa.europa.eu", "nhs.uk"] }),
+        signal: AbortSignal.timeout(15_000),
       });
       if (!res.ok) return jsonError("Search failed.", 502);
       const data = (await res.json()) as { results?: { title?: string; url?: string }[] };
@@ -33,6 +34,7 @@ export async function POST(req: NextRequest) {
     if (brave) {
       const res = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(q)}&count=5`, {
         headers: { Accept: "application/json", "X-Subscription-Token": brave },
+        signal: AbortSignal.timeout(15_000),
       });
       if (!res.ok) return jsonError("Search failed.", 502);
       const data = (await res.json()) as { web?: { results?: { title?: string; url?: string }[] } };

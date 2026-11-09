@@ -21,6 +21,9 @@ export async function GET(req: NextRequest) {
   try {
     const res = await fetch(`${offBase.baseUrl}/api/v2/product/${code}.json`, {
       headers: { "User-Agent": "FOODLENS/0.1 (standalone GitHub build; contact: see README)" },
+      // Hard 15-second timeout: a stalled Open Food Facts connection must
+      // return 502, never hang this route (same fix as the models route).
+      signal: AbortSignal.timeout(15_000),
     });
     if (res.status === 404) {
       // Open Food Facts answers 404 for a product it has never seen.

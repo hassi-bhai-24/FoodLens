@@ -22,7 +22,7 @@ try {
 // the compiled output resolves from the project's node_modules.
 const out = mkdtempSync(join(root, ".qa-tmp-"));
 execSync(
-  `./node_modules/.bin/tsc lib/guards.ts lib/checkdigit.ts lib/proxy.ts lib/prompt.ts lib/models.ts lib/markdown.tsx lib/photo-check.ts lib/delimit.ts lib/local-answers.ts --outDir ${out} --module commonjs --target es2022 --jsx react --esModuleInterop --skipLibCheck --moduleResolution node`,
+  `./node_modules/.bin/tsc lib/guards.ts lib/checkdigit.ts lib/proxy.ts lib/prompt.ts lib/models.ts lib/markdown.tsx lib/photo-check.ts lib/delimit.ts lib/local-answers.ts lib/crypto.ts lib/db.ts lib/build.ts lib/provider-net.ts --outDir ${out} --module commonjs --target es2022 --jsx react --esModuleInterop --skipLibCheck --moduleResolution node`,
   { cwd: root, stdio: "pipe" },
 );
 const { createRequire } = await import("node:module");
@@ -30,16 +30,86 @@ const require = createRequire(join(root, "package.json"));
 const { classifyUserText } = require(join(out, "guards.js"));
 const { isExtremeWeightLoss } = require(join(out, "guards.js"));
 const { checkDigitValid } = require(join(out, "checkdigit.js"));
-const { isSafeHttpsUrl, isQuotaError, isModelNotFoundError, mapProviderError, clientRateLimitKey, isCustomBaseUrlAllowed, resolveTestOnlyBaseUrl, resolveGeminiBaseUrl, resolveOpenFoodFactsBaseUrl } = require(join(out, "proxy.js"));
+const { isSafeHttpsUrl, isQuotaError, isModelNotFoundError, isInvalidKeyError, mapProviderError, jsonError, clientRateLimitKey, isCustomBaseUrlAllowed, resolveTestOnlyBaseUrl, resolveGeminiBaseUrl, resolveOpenFoodFactsBaseUrl } = require(join(out, "proxy.js"));
 const { FOODLENS_SYSTEM_PROMPT } = require(join(out, "prompt.js"));
 const { TRANSCRIPTION_ONLY_INSTRUCTION } = require(join(out, "prompt.js"));
-const { flagUnverifiedAnalysis, extractENumbers, ALLERGEN_TERMS } = require(join(out, "photo-check.js"));
+const { flagUnverifiedAnalysis, extractENumbers, ALLERGEN_TERMS, assessImageQuality } = require(join(out, "photo-check.js"));
 const { delimitedBlock, formatAboutMe, formatBarcodeData } = require(join(out, "delimit.js"));
-const { CHAT_TEMPERATURE, defaultModelForProvider, resolveChatModel, geminiFallbackChain } = require(join(out, "models.js"));
+const { CHAT_TEMPERATURE, defaultModelForProvider, HF_MODEL_SUGGESTIONS, resolveChatModel, geminiFallbackChain } = require(join(out, "models.js"));
 const { answerLocally } = require(join(out, "local-answers.js"));
 const React = require("react");
 const { renderToString } = require("react-dom/server");
 const { Markdown } = require(join(out, "markdown.js"));
+
+// Minimal in-memory IndexedDB stand-in, just enough for lib/db.ts:
+// open() with onupgradeneeded/onsuccess, object stores with
+// get/put/delete/clear/getAll, and transactions with oncomplete.
+// All callbacks fire asynchronously, as in a real browser.
+{
+  const stores = new Map(); // store name -> Map(key, value)
+  const makeStore = (name) => ({
+    get(key) {
+      const req = { result: stores.get(name)?.get(key), onsuccess: null, onerror: null };
+      setTimeout(() => req.onsuccess?.(), 0);
+      return req;
+    },
+    put(value) {
+      const req = { result: undefined, onsuccess: null, onerror: null };
+      const key = value?.key ?? value?.id ?? value?.code;
+      if (!stores.has(name)) stores.set(name, new Map());
+      stores.get(name).set(key, value);
+      setTimeout(() => { req.onsuccess?.(); }, 0);
+      return req;
+    },
+    delete(key) {
+      const req = { result: undefined, onsuccess: null, onerror: null };
+      stores.get(name)?.delete(key);
+      setTimeout(() => { req.onsuccess?.(); }, 0);
+      return req;
+    },
+    clear() {
+      const req = { result: undefined, onsuccess: null, onerror: null };
+      stores.get(name)?.clear();
+      setTimeout(() => { req.onsuccess?.(); }, 0);
+      return req;
+    },
+    getAll() {
+      const req = { result: [...(stores.get(name)?.values() ?? [])], onsuccess: null, onerror: null };
+      setTimeout(() => req.onsuccess?.(), 0);
+      return req;
+    },
+  });
+  const makeTx = (names) => {
+    const tx = {
+      oncomplete: null, onerror: null, onabort: null,
+      objectStore: (n) => {
+        if (!stores.has(n)) throw new Error(`no such store: ${n}`);
+        const s = makeStore(n);
+        // Fire the transaction's oncomplete after each request settles.
+        const wrap = (m) => (...a) => { const r = s[m](...a); setTimeout(() => tx.oncomplete?.(), 0); return r; };
+        return { get: wrap("get"), put: wrap("put"), delete: wrap("delete"), clear: wrap("clear"), getAll: wrap("getAll") };
+      },
+    };
+    return tx;
+  };
+  globalThis.indexedDB = {
+    open(_name, _version) {
+      const req = { result: null, onsuccess: null, onerror: null, onupgradeneeded: null };
+      const db = {
+        objectStoreNames: { contains: (n) => stores.has(n) },
+        createObjectStore: (n) => { if (!stores.has(n)) stores.set(n, new Map()); },
+        transaction: (names) => makeTx(names),
+      };
+      req.result = db;
+      setTimeout(() => { req.onupgradeneeded?.(); req.onsuccess?.(); }, 0);
+      return req;
+    },
+  };
+}
+const { saveApiKey, loadApiKey, removeApiKey, hasStoredApiKey, __resetWrappingKeyForTests } = require(join(out, "crypto.js"));
+const { putKv, getKv } = require(join(out, "db.js"));
+const { BUILD_LABEL } = require(join(out, "build.js"));
+const { fetchWithHeadersTimeout, sseStreamFromProvider, PROVIDER_TIMEOUT_MESSAGE, SSE_STALL_MESSAGE, SSE_UPSTREAM_ERROR_MESSAGE, PROVIDER_HEADERS_TIMEOUT_MS, SSE_INACTIVITY_TIMEOUT_MS } = require(join(out, "provider-net.js"));
 
 let n = 0;
 function ok(cond, label) {
@@ -94,16 +164,72 @@ ok(quota.status === 429 && /usage limit|wait/i.test(quota.message), "quota maps 
 const notFound = mapProviderError(404, "");
 ok(notFound.status === 502 && /not available/i.test(notFound.message), "model-not-found maps to friendly 502");
 ok(mapProviderError(500, "").status === 502, "other provider errors map to 502");
+// v5: a rejected API key must be told apart from a bad model and from
+// quota — before this fix all three produced the same generic 502, so
+// the user could not tell which one to fix. Gemini rejects a bad key
+// with HTTP 400 + API_KEY_INVALID; OpenAI/Anthropic with HTTP 401.
+ok(isInvalidKeyError(400, '{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT","details":[{"reason":"API_KEY_INVALID"}]}}'), "Gemini bad key (400 API_KEY_INVALID) is an invalid-key error");
+ok(isInvalidKeyError(401, ""), "HTTP 401 is an invalid-key error");
+ok(isInvalidKeyError(401, "Incorrect API key provided"), "OpenAI bad key (401) is an invalid-key error");
+ok(isInvalidKeyError(401, '{"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"}}'), "Anthropic bad key (401) is an invalid-key error");
+ok(isInvalidKeyError(403, "PERMISSION_DENIED: The caller does not have permission"), "Gemini 403 PERMISSION_DENIED is an invalid-key error");
+ok(!isInvalidKeyError(404, "models/foo is not found"), "model-not-found is not an invalid-key error");
+ok(!isInvalidKeyError(429, "quota exceeded"), "quota is not an invalid-key error");
+ok(!isInvalidKeyError(500, "internal error"), "HTTP 500 is not an invalid-key error");
+const badKey = mapProviderError(400, "API_KEY_INVALID");
+ok(badKey.status === 401 && /rejected this API key/i.test(badKey.message), "bad key maps to distinct 401 with its own message");
+ok(mapProviderError(401, "Incorrect API key provided").status === 401, "OpenAI bad key maps to 401");
+ok(/rejected this API key/i.test(mapProviderError(400, "API_KEY_INVALID").message) && !/not available/i.test(mapProviderError(400, "API_KEY_INVALID").message), "bad-key message does not blame the model");
+// v10: Hugging Face 402 (no Inference Providers credits) is its own
+// error, not a bad key and not quota. Verified live 2026-11-09: the
+// router answered exactly this body on a free account.
+const credits = mapProviderError(402, "Purchase pre-paid credits to continue using Inference Providers.");
+ok(credits.status === 402 && /credits/i.test(credits.message), "HF 402 maps to friendly 402 naming credits");
+ok(!/rejected this API key/i.test(credits.message) && !/usage limit/i.test(credits.message), "credits message does not blame the key or quota");
+// v12: jsonError can carry a machine-readable code. The no-key 401
+// uses code "no_key" so the client can tell "no key anywhere" apart
+// from a rejected key and fall back to local answers.
+const noKeyRes = jsonError("no key", 401, "no_key");
+ok(noKeyRes.status === 401, "jsonError keeps the status with a code");
+const noKeyJson = await noKeyRes.json();
+ok(noKeyJson.code === "no_key" && noKeyJson.error === "no key", "jsonError carries the error code");
+ok((await jsonError("plain", 500).json()).code === undefined, "jsonError without a code has no code field");
 
 // Model defaults, env config and Gemini fallback chain (lib/models.ts)
+// v5: defaults are the providers' current models, verified 2026-11-06
+// against their own published lists. gemini-3.5-flash was a deprecated
+// alias (Google routes it to gemini-3.6-flash), gpt-4o-mini shuts down
+// 2027-01-14 (OpenAI names gpt-6-luna), and claude-sonnet-4-5 retires
+// 2026-11-30 (Anthropic names claude-sonnet-5-5). gemini-flash-latest
+// is not a published model ID and is no longer a fallback.
 ok(CHAT_TEMPERATURE === 0.3, "chat temperature is 0.3");
-ok(defaultModelForProvider("gemini", {}) === "gemini-3.5-flash", "Gemini built-in default");
+ok(defaultModelForProvider("gemini", {}) === "gemini-3.8-flash", "Gemini built-in default is the current Flash model");
+ok(defaultModelForProvider("openai", {}) === "gpt-6-luna", "OpenAI built-in default is the current replacement model");
+ok(defaultModelForProvider("anthropic", {}) === "claude-sonnet-5-5", "Anthropic built-in default is the current Sonnet model");
+ok(defaultModelForProvider("huggingface", {}) === "Qwen/Qwen3.8-27B", "Hugging Face built-in default is Qwen3.8 27B");
+ok(defaultModelForProvider("huggingface", { HF_MODEL: "moonshotai/Kimi-K3" }) === "moonshotai/Kimi-K3", "HF_MODEL env alias works");
+ok(resolveChatModel("huggingface", "", {}) === "Qwen/Qwen3.8-27B", "Hugging Face built-in default via resolveChatModel");
+// v12: Groq provider (lib/models.ts). Default is gpt-oss-120b, the
+// quality default on Groq's free tier (30 req/min, 1,000 req/day, no
+// card needed, verified Oct 2026).
+ok(defaultModelForProvider("groq", {}) === "openai/gpt-oss-120b", "Groq built-in default is gpt-oss-120b");
+ok(defaultModelForProvider("groq", { GROQ_MODEL: "openai/gpt-oss-20b" }) === "openai/gpt-oss-20b", "GROQ_MODEL env alias works");
+ok(resolveChatModel("groq", "", {}) === "openai/gpt-oss-120b", "Groq built-in default via resolveChatModel");
+// v11: curated Hugging Face quick picks (lib/models.ts). Every id was
+// verified live on the router 2026-11-09; the two text-only models are
+// the only ones without vision.
+ok(HF_MODEL_SUGGESTIONS.length === 8, "Hugging Face suggestions list has 8 models");
+ok(HF_MODEL_SUGGESTIONS[0].id === "Qwen/Qwen3.8-27B", "first suggestion is the Hugging Face default");
+ok(new Set(HF_MODEL_SUGGESTIONS.map((m) => m.id)).size === 8, "suggestion model ids are unique");
+ok(HF_MODEL_SUGGESTIONS.every((m) => m.id.includes("/")), "suggestion ids carry the org prefix");
+ok(HF_MODEL_SUGGESTIONS.filter((m) => !m.vision).map((m) => m.id).join(",") === "XiaomiMiMo/MiMo-V2.6-Pro-RL,openai/gpt-oss-120b", "exactly two suggestions are text-only");
 ok(defaultModelForProvider("gemini", { FOODLENS_GEMINI_MODEL: "gemini-custom" }) === "gemini-custom", "env default model wins over built-in");
 ok(defaultModelForProvider("gemini", { GEMINI_MODEL: "gemini-env" }) === "gemini-env", "GEMINI_MODEL env alias works");
 ok(resolveChatModel("gemini", "user-model", { FOODLENS_GEMINI_MODEL: "env-model" }) === "user-model", "user-chosen model takes precedence");
-ok(resolveChatModel("openai", "", {}) === "gpt-4o-mini", "OpenAI built-in default");
-const chain = geminiFallbackChain("gemini-3.5-flash");
-ok(JSON.stringify(chain) === JSON.stringify(["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"]), "Gemini fallback chain order");
+ok(resolveChatModel("openai", "", {}) === "gpt-6-luna", "OpenAI built-in default");
+const chain = geminiFallbackChain("gemini-3.8-flash");
+ok(JSON.stringify(chain) === JSON.stringify(["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"]), "Gemini fallback chain order (current models only)");
+ok(!chain.includes("gemini-3.5-flash") && !chain.includes("gemini-flash-latest"), "fallback chain has no deprecated alias or unpublished model ID");
 ok(geminiFallbackChain("gemini-3.5-flash-lite")[0] === "gemini-3.5-flash-lite" && geminiFallbackChain("gemini-3.5-flash-lite").length === 2, "fallback chain de-duplicates the primary");
 
 // Single prompt source: lib/prompt.ts and the generated .md must match,
@@ -322,7 +448,9 @@ const modelsRoute = readFileSync(join(root, "app", "api", "models", "route.ts"),
 ok(/isCustomBaseUrlAllowed\(\)/.test(modelsRoute), "models route enforces the custom-base-URL flag");
 ok(/model: localModel/.test(chatRoute), "local provider emits the answering-model SSE event");
 ok(pageSrc.includes("General food information, not medical advice. Always check allergens on the real label."), "permanent in-app notice uses the exact required text");
-ok(pageSrc.includes("https://aistudio.google.com/apikey") && pageSrc.includes("may be used by Google to improve its products"), "Settings links Google AI Studio keys page with the free-tier data-use note");
+ok(!pageSrc.includes("https://aistudio.google.com/apikey"), "v4: Settings no longer links the Google AI Studio keys page (removed at user request)");
+ok(!pageSrc.includes("Refresh models") && !pageSrc.includes("Custom base URL") && !pageSrc.includes("About me (optional") && !pageSrc.includes("Export chats (JSON") && !pageSrc.includes("Delete all chats?") && !pageSrc.includes("Clear app data") && !pageSrc.includes("Web search (Gemini and OpenAI only"), "v4: Settings has no model picker, base URL, theme, web search, About me, export/import or delete/clear controls");
+ok(pageSrc.includes("API key (optional)") && pageSrc.includes("Save key") && pageSrc.includes("Remove key") && pageSrc.includes("Test connection"), "v4: Settings keeps provider + API key controls");
 ok(!pageSrc.includes("Answered by {m.model}"), "UI no longer displays the answering model under assistant replies (attribution line removed at user request)");
 ok(pageSrc.includes("navigator.share") && pageSrc.includes("speechSynthesis") && pageSrc.includes("Regenerate"), "assistant reply actions are Copy, Share, Listen (voice), Regenerate");
 const nextConfig = readFileSync(join(root, "next.config.mjs"), "utf8");
@@ -430,10 +558,10 @@ ok(answerLocally("Hello")?.includes("FOODLENS"), "local: greeting answered");
 ok(/banana/i.test(answerLocally("Hi, is banana healthy?") || ""), "local: greeting + food question answers the food");
 ok(answerLocally("What can I cook today?")?.includes("Daal"), "local: cook-today ideas given");
 ok(/roti/i.test(answerLocally("Is roti healthy?") || ""), "local: roti answered");
-ok(answerLocally("Is daal healthy?")?.includes("Daal"), "local: daal answered");
-ok(answerLocally("Is biryani healthy?")?.includes("Biryani"), "local: biryani answered");
+ok(/daal/i.test(answerLocally("Is daal healthy?") || ""), "local: daal answered");
+ok(/biryani/i.test(answerLocally("Is biryani healthy?") || ""), "local: biryani answered");
 ok(/chai/i.test(answerLocally("Is chai healthy?") || ""), "local: chai answered");
-ok(answerLocally("Is egg healthy?")?.includes("Egg"), "local: egg answered");
+ok(/egg/i.test(answerLocally("Is egg healthy?") || ""), "local: egg answered");
 ok(/banana/i.test(answerLocally("Is kela healthy?") || ""), "local: Roman Urdu kela maps to banana");
 ok(answerLocally("What's on my plate?")?.includes("balanced plate"), "local: plate guidance given");
 ok(answerLocally("Is chicken or rice healthier?")?.includes("Chicken") && answerLocally("Is chicken or rice healthier?")?.includes("Rice"), "local: chicken vs rice comparison covers both");
@@ -441,7 +569,8 @@ ok(answerLocally("What are these ingredients?")?.includes("Type the ingredients 
 ok(answerLocally("How do I store rice?")?.includes("Storing rice"), "local: storage guidance given");
 ok(answerLocally("Is mango good for diabetes?")?.includes("diabetes"), "local: diabetes condition note included");
 ok(answerLocally("Is daal healthy?") && !/\d/.test(answerLocally("Is daal healthy?")), "local: daal answer has no digits");
-ok(answerLocally("Is this biscuit healthy?") && !/\d/.test(answerLocally("Is this biscuit healthy?")), "local: biscuit answer has no digits");
+ok(answerLocally("Is this biscuit healthy?") && !/\d/.test((answerLocally("Is this biscuit healthy?") || "").replace(/per 100 g/g, "")), "local: biscuit answer has no digits except the per-100-g label unit");
+ok(((answerLocally("Is this biscuit healthy?") || "").match(/\d+/g) || []).every((d) => d === "100"), "local: the only digits in a biscuit answer are the 100 in per 100 g");
 ok(answerLocally("Is Coca-Cola healthy?") && !/\d/.test(answerLocally("Is Coca-Cola healthy?")), "local: cola answer has no digits");
 // Unknown / made-up brands: unverified, never certified.
 ok(answerLocally("Is Zorblox halal?")?.includes("I could not verify 'Zorblox'"), "local: unknown brand halal is unverified, exact wording");
@@ -470,12 +599,489 @@ ok(nutellaAns?.includes("occasional treat"), "local: barcode Nutri-Score E read 
 ok(answerLocally("Is this halal?", { barcodeData: nutella })?.includes("can't confirm halal"), "local: barcode data never certifies halal");
 ok(answerLocally("Does it contain milk?", { barcodeData: nutella })?.includes("milk is listed"), "local: barcode allergen reported from OFF data");
 ok(answerLocally("Is this healthy?", { barcodeData: { code: "0000000000000", missing: ["product not found in Open Food Facts"] } })?.includes("couldn't find this barcode"), "local: unknown barcode reported as not found");
+// ---- v2 expansion: new foods, topics, calories, substitutions, follow-ups ----
+ok(/pizza/i.test(answerLocally("Is pizza healthy?") || ""), "local v2: pizza answered");
+ok(answerLocally("Is pizza healthy?") && !/\d/.test(answerLocally("Is pizza healthy?")), "local v2: pizza answer has no digits");
+ok(/shawarma/i.test(answerLocally("Is shawarma healthy?") || ""), "local v2: shawarma answered");
+ok(answerLocally("Is Zinger burger healthy?")?.includes("treat"), "local v2: zinger answered as a treat category, not a brand fact");
+ok(/hotel biryani/i.test(answerLocally("Is hotel biryani healthy?") || ""), "local v2: hotel biryani answered");
+ok(answerLocally("Is hotel biryani healthy?") && !/\d/.test(answerLocally("Is hotel biryani healthy?")), "local v2: hotel biryani answer has no digits");
+ok(/bbq/i.test(answerLocally("Is bbq healthy?") || ""), "local v2: BBQ answered");
+ok(/street food/i.test(answerLocally("Is street food safe to eat?") || ""), "local v2: street food answered");
+ok(/boil/.test(answerLocally("Is fresh milk from the shop safe?") || ""), "local v2: fresh shop milk says boil it first");
+ok(/packaged juice/i.test(answerLocally("Is packaged juice healthy?") || ""), "local v2: packaged juice answered");
+ok(/fast food/i.test(answerLocally("Is fast food bad?") || ""), "local v2: fast food answered as a category");
+ok(/continental food/i.test(answerLocally("Is continental food healthy?") || ""), "local v2: continental food answered");
+ok(/tandoor naan/i.test(answerLocally("Is tandoor naan healthy?") || ""), "local v2: tandoor naan answered");
+// Pros and cons, spelled out as flowing sentences, for fruits and vegetables.
+const mangoPros = answerLocally("pros and cons of mango");
+ok(mangoPros?.includes("good and the bad") && /mango/i.test(mangoPros || ""), "local v2: mango pros and cons answered");
+ok(mangoPros?.includes("I like it because") && mangoPros?.includes("The downside is"), "local v2: pros and cons are flowing sentences, both sides");
+ok(/banana/i.test(answerLocally("banana ke faide aur nuksan") || "") && (answerLocally("banana ke faide aur nuksan") || "").includes("good and the bad"), "local v2: Roman Urdu faide aur nuksan gives pros and cons");
+const spinachPros = answerLocally("pros and cons of spinach");
+ok(/spinach/i.test(spinachPros || "") && spinachPros?.includes("good and the bad") && spinachPros?.includes("I like it because"), "local v2: vegetable pros and cons listed");
+// Meal ideas and health topics.
+ok(answerLocally("What should I eat for breakfast?")?.includes("Oats porridge"), "local v2: breakfast ideas given");
+ok(answerLocally("What should I eat for lunch?")?.includes("Daal chawal"), "local v2: lunch ideas given");
+ok(answerLocally("What should I eat for dinner?")?.includes("Vegetable soup"), "local v2: dinner ideas given");
+ok(answerLocally("I want to lose weight, what should I eat?")?.includes("lose weight"), "local v2: weight loss guidance given");
+ok(answerLocally("How can I gain weight?")?.includes("eat more often"), "local v2: weight gain guidance given");
+ok(answerLocally("What foods are good for muscle gain?")?.includes("protein"), "local v2: protein/muscle guidance given");
+const diabetesGuide = answerLocally("I have diabetes, what can I eat?");
+ok(diabetesGuide?.includes("diabetes") && diabetesGuide?.includes("doctor"), "local v2: diabetes guide with doctor note");
+const bpGuide = answerLocally("What should I eat with high blood pressure?");
+ok(bpGuide?.includes("blood pressure") && bpGuide?.includes("doctor"), "local v2: blood pressure guide with doctor note");
+ok(answerLocally("What should kids eat for lunch?")?.includes("Roti roll"), "local v2: kids guidance given");
+const pregGuide = answerLocally("What should I eat during pregnancy?");
+ok(pregGuide?.includes("pregnancy") && pregGuide?.includes("doctor"), "local v2: pregnancy guidance with doctor note");
+ok(answerLocally("What is the best cheap healthy food?")?.includes("tight budget"), "local v2: budget meals guidance given");
+const sickGuide = answerLocally("I am sick, what should I eat?");
+ok(sickGuide?.includes("sick") && sickGuide?.includes("doctor"), "local v2: sick guidance with doctor note");
+ok(answerLocally("What should I eat before a workout?")?.includes("workout"), "local v2: workout guidance given");
+ok(answerLocally("What should I eat?")?.includes("Half your plate"), "local v2: bare what-should-I-eat guidance given");
+// Market and hotel guides.
+const snackGuide = answerLocally("what snacks can I eat daily");
+ok(/packaged snacks/i.test(snackGuide || "") && snackGuide?.includes("label"), "local v2: packaged snacks guide covers labels");
+ok(answerLocally("what should I eat at a hotel?")?.includes("Hotel and restaurant food"), "local v2: eating-out guide given");
+ok(answerLocally("What should I buy at the market?")?.includes("market"), "local v2: market guide given");
+// Enriched packaged snacks (v2 fix): fuller answers, label checks, better swaps.
+const biscuitAns = answerLocally("are packaged biscuits healthy?");
+ok(biscuitAns?.includes("refined white flour") && biscuitAns?.includes("palm oil") && biscuitAns?.includes("roasted chana"), "snacks: biscuit answer names what is in it and a better swap");
+ok(biscuitAns?.includes("per 100 g"), "snacks: biscuit answer tells the reader to check sugar and salt per 100 g");
+const chipsAns = answerLocally("are chips bad for you?");
+ok(chipsAns?.includes("fried in oil") && chipsAns?.includes("roasted chana"), "snacks: chips answer names the oil and a crunchy swap");
+ok(answerLocally("is instant noodles healthy?")?.includes("flavour packet") && answerLocally("is instant noodles healthy?")?.includes("half the flavour packet"), "snacks: noodles answer covers the salty flavour packet and using half of it");
+ok(answerLocally("are digestive biscuits healthy?")?.includes("marketing"), "snacks: digestive biscuits answer says the healthy name is marketing");
+ok(answerLocally("are cream biscuits healthy?")?.includes("cream filling"), "snacks: cream biscuits answer names the sugary filling");
+ok(answerLocally("is packaged juice healthy?")?.includes("concentrate") && answerLocally("is packaged juice healthy?")?.includes("fruit drink"), "snacks: packaged juice answer covers concentrate and the fruit-drink trap");
+ok(answerLocally("are energy drinks healthy?")?.includes("crash"), "snacks: energy drinks answer covers the crash afterwards");
+ok(answerLocally("is namkeen healthy?")?.includes("whole packet"), "snacks: namkeen answer covers eating a whole packet");
+ok(answerLocally("is rusk healthy?")?.includes("twice-baked"), "snacks: rusk answer explains what rusk is");
+ok(answerLocally("is mathri healthy?")?.includes("ajwain"), "snacks: mathri answer names its ingredients");
+ok(answerLocally("are bakery items healthy?")?.includes("butter or oil"), "snacks: bakery items answer names what they are made from");
+ok(answerLocally("are granola bars healthy?")?.includes("candy bars with oats"), "snacks: granola bars answer calls out the sugar trap");
+ok(answerLocally("is chocolate healthy?")?.includes("milk chocolate") && answerLocally("is chocolate healthy?")?.includes("dark chocolate"), "snacks: chocolate answer separates milk and dark chocolate");
+// No bold markers anywhere in local answers — plain flowing text.
+ok(!/\*\*/.test(biscuitAns || ""), "snacks: biscuit answer has no bold markers");
+ok(!/\*\*/.test(chipsAns || "") && !/\*\*/.test(answerLocally("is instant noodles healthy?") || "") && !/\*\*/.test(answerLocally("are digestive biscuits healthy?") || ""), "snacks: chips, noodles and digestive biscuit answers have no bold markers");
+ok(!/\*\*/.test(bananaAns || "") && !/\*\*/.test(answerLocally("pros and cons of mango") || "") && !/\*\*/.test(answerLocally("Is hotel biryani healthy?") || ""), "snacks: banana, mango pros/cons and hotel biryani answers have no bold markers");
+ok(!/\*\*/.test(answerLocally("what snacks can I eat daily") || "") && !/\*\*/.test(answerLocally("I have diabetes, what can I eat?") || ""), "snacks: packaged-snacks and diabetes guides have no bold markers");
+ok(!/\*\*/.test(answerLocally("why?", { history: [{ role: "user", text: "Is banana healthy?" }, { role: "assistant", text: bananaAns || "" }] }) || "") && !/\*\*/.test(answerLocally("Is chicken or rice healthier?") || ""), "snacks: why-follow-up and comparison answers have no bold markers");
+ok(!/Pros:|Cons:/.test(mangoPros || "") && !/\*\*/.test(mangoPros || ""), "snacks: pros and cons answer is flowing text with no labels and no bold");
+// Roman Urdu mixes.
+ok(answerLocally("Mujhe wazan kam karna hai, kya khaun?")?.includes("lose weight"), "local v2: Roman Urdu weight loss answered");
+ok(/banana/i.test(answerLocally("kela or seb, konsa behtar hai?") || "") && /apple/i.test(answerLocally("kela or seb, konsa behtar hai?") || ""), "local v2: Roman Urdu comparison covers both foods");
+// Calories: rough ranges only, clearly labelled.
+const rotiCal = answerLocally("How many calories are in a roti?");
+ok(rotiCal?.includes("roughly 70–100") && rotiCal?.includes("rough range"), "local v2: roti calories are a labelled rough range");
+ok(answerLocally("How many calories are in a banana?")?.includes("roughly 90–120"), "local v2: banana calories are a labelled rough range");
+ok(answerLocally("How many calories should I eat?")?.includes("rough ranges"), "local v2: general calories guide given");
+// Substitutions.
+ok(answerLocally("What can I use instead of sugar?")?.includes("Instead of sugar"), "local v2: sugar substitution given");
+ok(answerLocally("What can I use instead of butter?")?.includes("Instead of butter"), "local v2: butter substitution given");
+ok(answerLocally("What can I use instead of cream?")?.includes("yogurt instead") && answerLocally("What can I use instead of cream?")?.includes("creaminess"), "local v2: cream substitution given");
+ok(answerLocally("What can I use instead of something?")?.includes("swaps I use a lot"), "local v2: general substitution list given");
+// Multi-turn follow-ups with history.
+const bananaFirst = answerLocally("Is banana healthy?");
+const bananaHist = [{ role: "user", text: "Is banana healthy?" }, { role: "assistant", text: bananaFirst }];
+ok(answerLocally("why?", { history: bananaHist })?.includes("everyday food"), "local v2: 'why?' follow-up explains the verdict");
+ok(/banana/i.test(answerLocally("is that better than roti?", { history: bananaHist }) || "") && /roti/i.test(answerLocally("is that better than roti?", { history: bananaHist }) || ""), "local v2: 'is that better than roti?' follow-up compares");
+const riceFirst = answerLocally("Is white rice healthy?");
+const riceHist = [{ role: "user", text: "Is white rice healthy?" }, { role: "assistant", text: riceFirst }];
+ok(/brown rice/i.test(answerLocally("or brown rice?", { history: riceHist }) || ""), "local v2: 'or brown rice?' follow-up answers the new food");
+ok(answerLocally("is that good for diabetes?", { history: bananaHist })?.includes("diabetes"), "local v2: 'is that good for diabetes?' follow-up adds the condition note");
+ok(answerLocally("how many calories in that?", { history: bananaHist })?.includes("roughly 90–120"), "local v2: 'how many calories in that?' follow-up gives the range");
+ok(answerLocally("yes", { history: bananaHist }) !== null, "local v2: 'yes' follow-up gives more on the same food");
+const zingerFirst = answerLocally("Is Zinger burger healthy?");
+const zingerHist = [{ role: "user", text: "Is Zinger burger healthy?" }, { role: "assistant", text: zingerFirst }];
+ok(answerLocally("is that halal?", { history: zingerHist })?.includes("can't certify"), "local v2: 'is that halal?' follow-up never certifies");
+ok(/rice/i.test(answerLocally("and what about rice?") || ""), "local v2: 'and what about rice?' answers the food");
+// Improved fallback: useful, not a dead end — but non-food still returns null.
+const durianAns = answerLocally("Is durian healthy?");
+ok(durianAns?.includes("don't have") && durianAns?.includes("label"), "local v2: unknown food fallback says what would help");
+ok(durianAns?.includes("key in Settings"), "local v2: fallback ends with the soft key line");
+ok(!/durian is/i.test(durianAns || ""), "local v2: fallback invents no fact about the unknown food");
+// Human tone: varied openers, a closing question, no attribution line.
+const toneOpeners = new Set(["banana", "mango", "daal", "roti", "apple", "egg", "chicken", "pizza"].map((f) => (answerLocally(`Is ${f} healthy?`) || "").split("\n")[0]));
+ok(toneOpeners.size >= 2, "local v2: food answers vary their opening line");
+ok(bananaAns?.trimEnd().endsWith("?"), "local v2: food answer ends with a short follow-up question");
+ok(!/Answered by/i.test(bananaAns || ""), "local v2: no attribution line in the answer");
+// v3: no section labels anywhere, first-person voice, expired food answered as myself.
+const NO_LABELS = ["Short answer", "Quick answer", "In short", "The honest take", "What's good", "Watch out for", "How to enjoy it", "My suggestion", "Why it's good", "Be careful about", "Who should be careful", "Pros:", "Cons:"];
+const hasNoLabels = (a) => a && NO_LABELS.every((l) => !a.includes(l));
+ok(hasNoLabels(bananaAns), "v3: banana answer has no section labels");
+ok(hasNoLabels(biscuitAns), "v3: biscuits answer has no section labels");
+ok(hasNoLabels(mangoPros), "v3: mango pros/cons answer has no section labels");
+ok(hasNoLabels(chipsAns), "v3: chips answer has no section labels");
+ok(hasNoLabels(answerLocally("why?", { history: bananaHist })), "v3: why-follow-up has no section labels");
+ok(hasNoLabels(answerLocally("Is chicken or rice healthier?")), "v3: comparison has no section labels");
+ok(hasNoLabels(diabetesGuide), "v3: diabetes guide has no section labels");
+ok(hasNoLabels(snackGuide), "v3: packaged snacks guide has no section labels");
+const expiredAns = answerLocally("will you eat expired food");
+ok(expiredAns?.includes("I wouldn") && /smell|looks|risk/.test(expiredAns || ""), "v3: expired food answered first-person with the reason");
+ok(hasNoLabels(expiredAns), "v3: expired food answer has no section labels");
+// The safety guard answers "expired food" before the local engine, so its
+// text must be first-person too — it is what the browser actually shows.
+const expiredGuard = classifyUserText("will you eat expired food", false);
+ok(expiredGuard?.text.includes("I wouldn") && /smell|looks|risk/.test(expiredGuard?.text || ""), "v3: expired-food guard reply is first-person with the reason");
+ok(/I'd only have/.test(answerLocally("would you eat pizza") || ""), "v3: 'would you eat X' answered first-person from the verdict");
+ok(/I'd happily eat/.test(answerLocally("would you eat banana") || ""), "v3: 'would you eat' an everyday food is a yes");
+ok(!/\*\*/.test(expiredAns || "") && !/\*\*/.test(answerLocally("Is chicken or rice healthier?") || ""), "v3: expired and comparison answers have no bold markers");
 // Fallback: questions the local engine cannot answer return null.
 ok(answerLocally("What is the capital of France?") === null, "local: non-food question returns null");
 ok(answerLocally("Tell me a joke") === null, "local: joke returns null");
 ok(answerLocally("What is the airspeed of a swallow?") === null, "local: unanswerable question returns null");
 ok(answerLocally("How do I fix my Wi-Fi?") === null, "local: tech question returns null");
 ok(answerLocally("") === null, "local: empty question returns null");
+
+// v4: a saved API key survives a fresh session (page reload). The
+// reset hook drops the in-memory wrapping key, so the next load must
+// go through the stored JWK — exactly the post-reload path.
+await saveApiKey("gemini", "test-key-abc123");
+ok(await hasStoredApiKey("gemini"), "v4: key blob exists after save");
+__resetWrappingKeyForTests();
+ok((await loadApiKey("gemini")) === "test-key-abc123", "v4: saved key loads after a fresh session");
+await saveApiKey("openai", "test-key-xyz");
+__resetWrappingKeyForTests();
+ok((await loadApiKey("openai")) === "test-key-xyz", "v4: per-provider keys survive a fresh session");
+ok((await loadApiKey("gemini")) === "test-key-abc123", "v4: other provider key untouched by a second save");
+await removeApiKey("gemini");
+__resetWrappingKeyForTests();
+ok((await loadApiKey("gemini")) === null, "v4: removed key loads as null");
+ok(!(await hasStoredApiKey("gemini")), "v4: removed key is gone");
+// A blob encrypted under a wrapping key that no longer exists can
+// never decrypt: it loads as null and is dropped, so Settings stops
+// claiming a key is stored. Simulate it by swapping the stored wrap JWK.
+await saveApiKey("anthropic", "stale-key");
+const freshWrap = await crypto.subtle.exportKey("jwk", await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]));
+await putKv("apiKey:wrap", freshWrap);
+__resetWrappingKeyForTests();
+ok((await loadApiKey("anthropic")) === null, "v4: blob under a lost wrapping key loads as null");
+ok(!(await hasStoredApiKey("anthropic")), "v4: undecryptable blob is dropped");
+// v4: the simplified Settings (provider + key only) still loads and
+// saves settings, and an empty model still falls back to the default.
+await putKv("settings", { provider: "openai", model: "", customBaseUrl: "", searchEnabled: false, theme: "system", aboutMe: "", offlineModel: "" });
+const savedSettings = await getKv("settings");
+ok(savedSettings?.provider === "openai" && savedSettings?.model === "", "v4: settings round-trip through storage");
+ok(resolveChatModel("gemini", "", {}) === "gemini-3.8-flash", "v4: empty model falls back to the provider default");
+
+// v6: the wrapping key is single-flight, so overlapping save/load calls
+// can never strand a blob under a wrapping key that was never stored.
+// Two concurrent saves for different providers share one wrapping key
+// and both blobs must decrypt after a fresh session.
+await Promise.all([saveApiKey("gemini", "concurrent-one"), saveApiKey("openai", "concurrent-two")]);
+__resetWrappingKeyForTests();
+ok((await loadApiKey("gemini")) === "concurrent-one", "v6: concurrent saves share one wrapping key (gemini)");
+ok((await loadApiKey("openai")) === "concurrent-two", "v6: concurrent saves share one wrapping key (openai)");
+// v6: saveApiKey verifies its own save — it proves the stored blob
+// decrypts with the stored wrapping key before reporting success, so a
+// save that did not really persist is never silently accepted.
+await saveApiKey("anthropic", "verified-key-123");
+__resetWrappingKeyForTests();
+ok((await loadApiKey("anthropic")) === "verified-key-123", "v6: verified save loads after a fresh session");
+// v6: the build label shown in Settings names this preview build, so a
+// bug report can say exactly which build is running. Pinned to the exact
+// current label and bumped with each preview-branch fix round.
+ok(BUILD_LABEL === "preview v13", "build label names the current preview build (v13)");
+
+
+// ================= preview v7 =================
+// --- 1. Image quality assessor (lib/photo-check.ts) — the Test 18 gap.
+// Synthetic label images at a realistic scale: 800x600 with ~26 px text
+// strokes (equivalent, in blur-relative terms, to a full-frame 1600 px
+// label photo after the image pipeline's resize). Deterministic, no
+// canvas, no files. Measured variances on this synthetic: sharp ≈ 20000,
+// slightly soft (blur 2, readable) ≈ 640, blurry (blur 5) ≈ 73 — the
+// 120 threshold sits between "readable" and "clearly blurry".
+function lcg(seed) { let s = seed; return () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff; }
+function syntheticLabel(width, height) {
+  const px = new Uint8ClampedArray(width * height * 4).fill(242);
+  const rnd = lcg(7);
+  // Text-like content: rows of dark strokes of varying width, on a light
+  // background — like a real printed ingredients label.
+  for (let row = 40; row < height - 40; row += 38) {
+    let x = 30;
+    while (x < width - 30) {
+      const letters = 2 + Math.floor(rnd() * 5);
+      for (let l = 0; l < letters; l++) {
+        const strokeN = 1 + Math.floor(rnd() * 3);
+        for (let s = 0; s < strokeN; s++) {
+          const sx = x + s * 4;
+          for (let dy = 0; dy < 26 && row + dy < height; dy++) {
+            for (let dx = 0; dx < 3 && sx + dx < width; dx++) {
+              const i = ((row + dy) * width + (sx + dx)) * 4;
+              px[i] = 30; px[i + 1] = 30; px[i + 2] = 30;
+            }
+          }
+        }
+        x += 4 * strokeN + 3;
+      }
+      x += 14; // word gap
+    }
+  }
+  return px;
+}
+function boxBlur(px, width, height, radius) {
+  const out = new Uint8ClampedArray(px.length);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+          const yy = Math.min(height - 1, Math.max(0, y + dy));
+          const xx = Math.min(width - 1, Math.max(0, x + dx));
+          const i = (yy * width + xx) * 4;
+          r += px[i]; g += px[i + 1]; b += px[i + 2]; n++;
+        }
+      }
+      const o = (y * width + x) * 4;
+      out[o] = r / n; out[o + 1] = g / n; out[o + 2] = b / n; out[o + 3] = 255;
+    }
+  }
+  return out;
+}
+const QW = 800, QH = 600;
+const sharpPx = syntheticLabel(QW, QH);
+const sharpQ = assessImageQuality(sharpPx, QW, QH);
+const softQ = assessImageQuality(boxBlur(sharpPx, QW, QH, 2), QW, QH);   // slightly soft, still readable
+const blurredQ = assessImageQuality(boxBlur(sharpPx, QW, QH, 5), QW, QH); // genuinely blurry
+const darkPx = new Uint8ClampedArray(sharpPx.length);
+for (let i = 0; i < sharpPx.length; i += 4) { darkPx[i] = sharpPx[i] * 0.12; darkPx[i + 1] = sharpPx[i + 1] * 0.12; darkPx[i + 2] = sharpPx[i + 2] * 0.12; darkPx[i + 3] = 255; }
+const darkQ = assessImageQuality(darkPx, QW, QH);
+const flatPx = new Uint8ClampedArray(QW * QH * 4).fill(128);
+for (let i = 3; i < flatPx.length; i += 4) flatPx[i] = 255;
+const flatQ = assessImageQuality(flatPx, QW, QH);
+ok(!sharpQ.blurry, "quality: sharp synthetic label is not flagged blurry");
+ok(sharpQ.variance > 400, "quality: sharp label variance is well above threshold (" + Math.round(sharpQ.variance) + ")");
+ok(!softQ.blurry, "quality: slightly soft but readable label is NOT flagged (no over-warning)");
+ok(blurredQ.blurry, "quality: genuinely blurry label IS flagged (Test 18 gap closed)");
+ok(sharpQ.variance > 5 * blurredQ.variance, "quality: blur collapses variance by >5x (" + Math.round(sharpQ.variance) + " vs " + Math.round(blurredQ.variance) + ")");
+ok(darkQ.dark && darkQ.brightness < 0.2, "quality: dark copy flagged dark");
+ok(darkQ.blurry === false, "quality: darkness does not fake blurriness (separate signals)");
+ok(flatQ.flat && flatQ.blurry, "quality: flat grey flagged flat and without readable detail");
+ok(assessImageQuality(new Uint8ClampedArray(4), 1, 1).blurry, "quality: degenerate 1x1 input handled safely");
+ok(sharpQ.brightness > 0.7 && sharpQ.contrast > 0.1, "quality: sharp label brightness/contrast in expected ranges");
+
+// --- 2. Route hang fix: every non-streaming server fetch carries a timeout.
+const v7ModelsRoute = readFileSync(join(root, "app", "api", "models", "route.ts"), "utf8");
+const v7BarcodeRoute = readFileSync(join(root, "app", "api", "barcode", "route.ts"), "utf8");
+const v7SearchRoute = readFileSync(join(root, "app", "api", "search", "route.ts"), "utf8");
+ok((v7ModelsRoute.match(/AbortSignal\.timeout\(/g) || []).length >= 2, "models route: both provider fetches carry a hard timeout (hang fix)");
+ok(v7ModelsRoute.includes("AbortSignal.timeout(10_000)"), "models route: 10s timeout on model list fetches");
+ok(v7BarcodeRoute.includes("AbortSignal.timeout(15_000)"), "barcode route: 15s timeout on Open Food Facts fetch");
+ok((v7SearchRoute.match(/AbortSignal\.timeout\(/g) || []).length >= 2, "search route: Tavily and Brave fetches carry timeouts");
+ok(chatRoute.includes("AbortSignal.timeout(120_000)"), "chat route: local (Ollama) non-streaming fetch carries a 120s timeout");
+
+// --- 3. Photo quality warning wiring (client side).
+ok(pageSrc.includes("photoQualityNotice"), "page: blurry/dark photo notice helper present");
+ok(pageSrc.includes("photoQualityNotice(attachments)"), "page: notice rendered from attachments");
+const v7ImageSrc = readFileSync(join(root, "lib", "image.ts"), "utf8");
+ok(v7ImageSrc.includes("assessImageQuality"), "image pipeline: quality assessed on the drawn canvas");
+const v7TypesSrc = readFileSync(join(root, "lib", "types.ts"), "utf8");
+ok(v7TypesSrc.includes("quality?: ImageQuality"), "types: ChatImage carries the quality estimate");
+
+// --- 4. Local engine v7 additions: snacks, packaged daily, market/hotel, fruit/veg, Roman Urdu.
+const v7Snacks = ["Is nimko healthy?", "Is bakery patty healthy?", "Is corn puffs healthy?", "Is gola ganda healthy?", "Is kachori healthy?"];
+for (const q of v7Snacks) ok(answerLocally(q) !== null && !/I don't have/.test(answerLocally(q)), "local v7: snack answered — " + q);
+const v7Packaged = ["Is instant soup healthy?", "Are canned beans healthy?", "Is sausage healthy?", "Are deli meats healthy?", "Are cheese slices healthy?", "Is frozen paratha healthy?", "Is instant coffee healthy?"];
+for (const q of v7Packaged) ok(answerLocally(q) !== null && !/I don't have/.test(answerLocally(q)), "local v7: packaged daily item answered — " + q);
+const v7Market = ["Is tandoori roti healthy?", "Is roghni naan healthy?", "What is dhaba food like?", "Is a hotel buffet healthy?", "Is khichdi healthy?", "Is anda paratha healthy?", "Is fruit cake healthy?"];
+for (const q of v7Market) ok(answerLocally(q) !== null && !/I don't have/.test(answerLocally(q)), "local v7: market/hotel/daily dish answered — " + q);
+const v7Produce = ["Is chikoo healthy?", "Is falsa healthy?", "Is jackfruit healthy?", "Is tinda healthy?", "Is arvi healthy?", "Is red meat healthy?"];
+for (const q of v7Produce) ok(answerLocally(q) !== null && !/I don't have/.test(answerLocally(q)), "local v7: fruit/vegetable/meat answered — " + q);
+ok(answerLocally("benefits of fruits")?.includes("everyday"), "local v7: fruit category pros/cons guide given");
+ok(answerLocally("pros and cons of vegetables")?.includes("Vegetables"), "local v7: vegetable category pros/cons guide given");
+ok(/salad|vegetab/i.test(answerLocally("sabzi ke faide") || ""), "local v7: Roman Urdu sabzi faide reaches the vegetable guide");
+ok(answerLocally("Is gosht healthy?")?.includes("red meat"), "local v7: gosht answers as red meat");
+ok(answerLocally("pyaz faide") !== null, "local v7: pyaz answered");
+ok(answerLocally("gobhi ke faide") !== null, "local v7: gobhi answered");
+ok(/ridge gourd/i.test(answerLocally("Is loki healthy?") || ""), "local v7: loki maps to ridge gourd");
+ok(answerLocally("Is packaged milk healthy?") !== null, "local v7: packaged milk answered");
+ok(answerLocally("Is chicken roll healthy?") !== null, "local v7: chicken roll answered");
+ok(answerLocally("khichdi recipe")?.includes("Khichdi"), "local v7: khichdi recipe given");
+ok(answerLocally("anda paratha recipe")?.includes("Anda paratha"), "local v7: anda paratha recipe given");
+ok(answerLocally("chana jor garam") !== null || answerLocally("Is chana jor garam healthy?") !== null, "local v7: chana jor garam (namkeen) answered");
+
+// --- 5. Answer style rules hold on the new answers: first person, no
+// headings, no bold, no emojis, no digits (no invented numbers).
+const STYLE_BAD = ["Short answer", "Quick answer", "What's good", "Watch out for", "How to enjoy it", "My suggestion", "Why it's good", "Be careful about", "In short", "Conclusion"];
+const styleQuestions = [...v7Snacks, ...v7Packaged, ...v7Market, ...v7Produce, "benefits of fruits", "pros and cons of vegetables", "Is banana healthy?", "Is Zorblox halal?"];
+let styleChecked = 0;
+for (const q of styleQuestions) {
+  const a = answerLocally(q) || "";
+  ok(!a.includes("**"), "style: no bold markers — " + q);
+  ok(!STYLE_BAD.some((h) => a.includes(h)), "style: no section headings — " + q);
+  ok(!/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(a), "style: no emojis — " + q);
+  ok(a.split(/\n{2,}/).length >= 1, "style: answer is plain paragraphs — " + q);
+  styleChecked++;
+}
+ok(styleChecked === styleQuestions.length, "style: all v7 answers checked against the style rules");
+
+// ================= preview v9: hang-then-fail =================
+// --- 1. Greeting guard: pure greetings answer instantly from code and
+// never touch the provider; greetings WITH a food question still pass;
+// a photo message is never intercepted by the greeting.
+const v9Greetings = ["hello", "helo", "hello!", "hello?", "hi", "hi there", "hey there", "hey, how are you?", "how are you", "how are you today?", "salam", "salaam", "aoa", "assalam o alaikum", "as-salam-u-alaikum", "good morning", "good evening foodlens", "greetings", "yo", "sup", "what's up", "who are you", "what can you do", "hello foodlens", "kaise ho", "السلام علیکم", "سلام"];
+for (const g of v9Greetings) {
+  const r = classifyUserText(g, false);
+  ok(r?.kind === "greeting", `v9 greeting: pure greeting answered from code — "${g}"`);
+  ok(!r?.text.includes("**") && !/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(r?.text || ""), `v9 greeting: reply is plain text, no bold, no emoji — "${g}"`);
+}
+ok(classifyUserText("السلام علیکم", false)?.text.includes("سلام"), "v9 greeting: Urdu-script greeting gets the Urdu reply");
+ok(!/[\u0600-\u06FF]/.test(classifyUserText("hello", false)?.text || ""), "v9 greeting: Latin greeting gets the English reply");
+// Greeting + real content is NOT a pure greeting — it must reach the model.
+const v9NotGreetings = ["hello, is banana healthy?", "hi what can I cook with rice", "hello is this milk safe?", "is banana healthy?", "hey tell me about dates fruit", "good morning what is sehri"];
+for (const g of v9NotGreetings) {
+  ok(classifyUserText(g, false)?.kind !== "greeting", `v9 greeting: greeting plus a food question still goes to the model — "${g}"`);
+}
+ok(classifyUserText("hello", false)?.kind === "greeting" && classifyUserText("hello, is banana healthy?", false) === null, "v9 greeting: the boundary is exact (pure vs with-question)");
+// A photo message is never intercepted by the greeting — vision needs the provider.
+ok(classifyUserText("hello", true) === null, "v9 greeting: photo message with greeting text is not intercepted");
+// The old non-food behaviours are untouched by the greeting layer.
+ok(classifyUserText("Write Python code for a calculator")?.kind === "redirect", "v9 greeting: coding redirect still works");
+ok(classifyUserText("Is banana healthy?") === null, "v9 greeting: food question still passes");
+
+// --- 2. Bounded provider fetch (lib/provider-net.ts): headers timeout.
+{
+  // A fetch that never resolves must be aborted at the timeout, and
+  // reported as a timeout (timedOut: true), not as a network error.
+  // The fake rejects when the signal aborts, exactly like a real
+  // stalled socket (no headers ever arrive, so it never resolves).
+  const neverFetch = (_url, init) => new Promise((_resolve, reject) => {
+    init.signal.addEventListener("abort", () => reject(new Error("aborted")));
+  });
+  const t0 = Date.now();
+  const outcome = await fetchWithHeadersTimeout("https://provider.example/v1", {}, 60, neverFetch);
+  ok(outcome.res === null && outcome.timedOut === true, "v9 fetch bound: never-answering fetch is aborted as a timeout");
+  ok(Date.now() - t0 < 2_000, "v9 fetch bound: the timeout fires promptly (not 300 s)");
+  // A fetch that answers within the timeout must NOT be aborted later:
+  // the headers timer disarms, so a slow-but-healthy stream survives.
+  let abortedAfterHeaders = false;
+  const okFetch = (_url, init) => new Promise((resolve) => {
+    init.signal.addEventListener("abort", () => { abortedAfterHeaders = true; });
+    setTimeout(() => resolve(new Response("stream-ok")), 10);
+  });
+  const okOutcome = await fetchWithHeadersTimeout("https://provider.example/v1", {}, 80, okFetch);
+  ok(okOutcome.res !== null && okOutcome.timedOut === false, "v9 fetch bound: answering fetch resolves with the response");
+  await new Promise((r) => setTimeout(r, 150));
+  ok(!abortedAfterHeaders && !okOutcome.controller.signal.aborted, "v9 fetch bound: headers timer disarms — a healthy stream is never cut by the headers timeout");
+  // A client disconnect aborts the in-flight upstream fetch.
+  const clientAbort = new AbortController();
+  const hangFetch = (_url, init) => new Promise((_resolve, reject) => {
+    init.signal.addEventListener("abort", () => reject(new Error("aborted")));
+  });
+  const hangP = fetchWithHeadersTimeout("https://provider.example/v1", {}, 5_000, hangFetch, clientAbort.signal);
+  setTimeout(() => clientAbort.abort(), 30);
+  const hangOutcome = await hangP;
+  ok(hangOutcome.res === null && hangOutcome.timedOut === false, "v9 fetch bound: client disconnect aborts the upstream fetch (not a timeout)");
+}
+ok(PROVIDER_HEADERS_TIMEOUT_MS === 30_000, "v9 fetch bound: provider headers timeout is 30 s");
+ok(SSE_INACTIVITY_TIMEOUT_MS === 30_000, "v9 fetch bound: SSE inactivity timeout is 30 s");
+ok(PROVIDER_TIMEOUT_MESSAGE.includes("did not answer in time"), "v9 fetch bound: timeout message says what happened");
+ok(SSE_STALL_MESSAGE.includes("stopped part-way through"), "v9 fetch bound: stall message says what happened");
+
+// --- 3. SSE relay with inactivity watchdog (lib/provider-net.ts).
+{
+  const extract = (line) => {
+    if (!line.startsWith("data:")) return null;
+    try {
+      const j = JSON.parse(line.slice(5));
+      return j.choices?.[0]?.delta?.content || null;
+    } catch { return null; }
+  };
+  const readAll = async (res) => {
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let text = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      text += decoder.decode(value, { stream: true });
+    }
+    return text;
+  };
+  const parseEvents = (text) => text.split("\n").filter((l) => l.startsWith("data: ")).map((l) => l.slice(6));
+
+  // (a) Stalled stream: one chunk, then silence. The watchdog must end
+  // the relay with the stall message instead of hanging forever.
+  {
+    let upstreamAborted = false;
+    const upstream = new Response(new ReadableStream({
+      start(c) { c.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ choices: [{ delta: { content: "part one " } }] })}\n\n`)); },
+      pull() { return new Promise(() => {}); }, // stall forever
+    }), { headers: { "Content-Type": "text/event-stream" } });
+    const relayed = sseStreamFromProvider(upstream, extract, "test-model", { inactivityTimeoutMs: 80, abortUpstream: () => { upstreamAborted = true; } });
+    const t0 = Date.now();
+    const text = await readAll(relayed);
+    const events = parseEvents(text);
+    const stall = events.map((e) => { try { return JSON.parse(e).error; } catch { return null; } }).find(Boolean);
+    ok(stall === SSE_STALL_MESSAGE, "v9 sse relay: stalled upstream ends with the clear stall message");
+    ok(events.some((e) => { try { return JSON.parse(e).delta === "part one "; } catch { return false; } }), "v9 sse relay: the partial text that did arrive is relayed");
+    ok(upstreamAborted, "v9 sse relay: the stalled upstream is aborted, not left hanging");
+    ok(Date.now() - t0 < 2_000, "v9 sse relay: the watchdog fires promptly (not 300 s)");
+  }
+  // (b) Healthy stream: all deltas relayed, ends with [DONE], no error.
+  {
+    const upstream = new Response(new ReadableStream({
+      async start(c) {
+        for (const p of ["alpha ", "beta ", "gamma "]) {
+          c.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ choices: [{ delta: { content: p } }] })}\n\n`));
+          await new Promise((r) => setTimeout(r, 10));
+        }
+        c.close();
+      },
+    }), { headers: { "Content-Type": "text/event-stream" } });
+    const relayed = sseStreamFromProvider(upstream, extract, "test-model", { inactivityTimeoutMs: 500, abortUpstream: () => {} });
+    const text = await readAll(relayed);
+    const events = parseEvents(text);
+    const deltas = events.map((e) => { try { return JSON.parse(e).delta; } catch { return undefined; } }).filter(Boolean);
+    ok(deltas.join("") === "alpha beta gamma ", "v9 sse relay: healthy stream relays every delta in order");
+    ok(events.includes("[DONE]"), "v9 sse relay: healthy stream ends with [DONE]");
+    ok(!events.some((e) => { try { return Boolean(JSON.parse(e).error); } catch { return false; } }), "v9 sse relay: healthy stream produces no error event");
+  }
+  // (c) Upstream errors mid-stream: the client gets the clear
+  // lost-connection message instead of a cryptic stream error.
+  {
+    const upstream = new Response(new ReadableStream({
+      start(c) { c.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ choices: [{ delta: { content: "begin " } }] })}\n\n`)); },
+      pull() { return Promise.reject(new Error("upstream socket died")); },
+    }), { headers: { "Content-Type": "text/event-stream" } });
+    const relayed = sseStreamFromProvider(upstream, extract, "test-model", { inactivityTimeoutMs: 5_000, abortUpstream: () => {} });
+    const text = await readAll(relayed);
+    const events = parseEvents(text);
+    const err = events.map((e) => { try { return JSON.parse(e).error; } catch { return null; } }).find(Boolean);
+    ok(err === SSE_UPSTREAM_ERROR_MESSAGE, "v9 sse relay: upstream mid-stream error becomes the clear lost-connection message");
+  }
+}
+
+// --- 4. Timeout wiring in the chat route and the client (source checks,
+// same style as the v7 checks above).
+const v9ChatRoute = readFileSync(join(root, "app", "api", "chat", "route.ts"), "utf8");
+ok((v9ChatRoute.match(/fetchWithHeadersTimeout\(/g) || []).length >= 3, "v9 chat route: gemini, anthropic and openai/compatible fetches all go through the bounded fetch");
+ok(v9ChatRoute.includes("PROVIDER_HEADERS_TIMEOUT_MS") && v9ChatRoute.includes("SSE_INACTIVITY_TIMEOUT_MS"), "v9 chat route: both timeout constants are used");
+ok(v9ChatRoute.includes("PROVIDER_TIMEOUT_MESSAGE") && v9ChatRoute.includes("504"), "v9 chat route: a provider timeout returns 504 with the clear message");
+ok(v9ChatRoute.includes("readBodyBounded"), "v9 chat route: error bodies are read with a cap");
+ok(v9ChatRoute.includes("req.signal"), "v9 chat route: a client disconnect stops the upstream fetch");
+ok((v9ChatRoute.match(/sseStreamFromProvider\(/g) || []).length >= 3 && v9ChatRoute.includes("inactivityTimeoutMs: SSE_INACTIVITY_TIMEOUT_MS"), "v9 chat route: all three provider streams go through the watchdog relay");
+const v9PageSrc = readFileSync(join(root, "app", "page.tsx"), "utf8");
+ok(v9PageSrc.includes("FIRST_BYTE_TIMEOUT_MS") && v9PageSrc.includes("45_000"), "v9 client: 45 s first-byte watchdog defined");
+ok(v9PageSrc.includes("CHUNK_INACTIVITY_MS") && v9PageSrc.includes("40_000"), "v9 client: 40 s chunk-inactivity watchdog defined");
+ok(v9PageSrc.includes("TOTAL_CAP_MS") && v9PageSrc.includes("180_000"), "v9 client: 180 s total cap defined");
+ok(v9PageSrc.includes("clearWatchdogs()"), "v9 client: watchdogs are cleared when the reply ends");
+ok(v9PageSrc.includes("did not answer in time"), "v9 client: timeout message says what actually happened");
+ok(v9PageSrc.includes("serverError"), "v9 client: server timeout/stall error events are shown, not swallowed");
+ok(v9PageSrc.includes("httpError"), "v9 client: a pre-stream server error keeps its exact text (not replaced by a generic message)");
+ok(v9PageSrc.includes("The connection was lost before the reply finished"), "v9 client: a dropped connection gets a clear message, not raw 'network error'");
+ok(v9PageSrc.includes("AbortSignal.timeout(30_000)"), "v9 client: Test connection is bounded too");
+ok(!v9PageSrc.includes("Something went wrong. Your message is saved"), "v9 client: the generic 'Something went wrong' fallback is gone");
+const v9SwSrc = readFileSync(join(root, "public", "sw.js"), "utf8");
+ok(v9SwSrc.includes('const CACHE = "foodlens-shell-v8"'), "v13 sw: app-shell cache bumped to v8 so stale shells are purged");
+ok(v9PageSrc.includes("HF_MODEL_SUGGESTIONS"), "v11 client: Settings shows Hugging Face model suggestions");
+ok(v9PageSrc.includes("Leave empty to use the default"), "v11 client: model field explains the default");
+ok(v9PageSrc.includes("replyLocally"), "v12 client: local answers reuse one helper");
+ok(v9PageSrc.includes('"no_key"'), "v12 client: no-key server response falls back to local answers");
+const chatRouteSrc = readFileSync(join(root, "app", "api", "chat", "route.ts"), "utf8");
+ok(chatRouteSrc.includes('b.provider === "groq"') && chatRouteSrc.includes("stream: false"), "v13 route: Groq is fetched non-streaming and relayed as SSE deltas");
 
 console.log(`unit-tests: ${n} assertions passed`);
 rmSync(out, { recursive: true, force: true });

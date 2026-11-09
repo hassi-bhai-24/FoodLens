@@ -1,7 +1,7 @@
 "use client";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { clearAllData, clearChats, deleteChat, getKv, listChats, putChat, putKv } from "@/lib/db";
-import { hasStoredApiKey, loadApiKey, removeApiKey, saveApiKey } from "@/lib/crypto";
+import { deleteChat, getKv, listChats, putChat, putKv } from "@/lib/db";
+import { loadApiKey, removeApiKey, saveApiKey } from "@/lib/crypto";
 import { processImageFile, dataUrlSizeBytes, MAX_IMAGES_PER_MESSAGE } from "@/lib/image";
 import { flagUnverifiedAnalysis } from "@/lib/photo-check";
 import { classifyUserText } from "@/lib/guards";
@@ -9,6 +9,8 @@ import { answerLocally } from "@/lib/local-answers";
 import { checkDigitValid, lookupBarcode, type BarcodeProduct } from "@/lib/barcode";
 import { Markdown } from "@/lib/markdown";
 import { DEFAULT_SETTINGS, PROVIDER_CAPABILITIES, type Chat, type ChatImage, type ChatMessage, type ProviderId, type Settings } from "@/lib/types";
+import { defaultModelForProvider, HF_MODEL_SUGGESTIONS } from "@/lib/models";
+import { BUILD_LABEL } from "@/lib/build";
 
 const CHIPS = ["What's on my plate?", "Is this biscuit healthy?", "Help me understand food labels.", "What can I cook today?", "What are these ingredients?"];
 
@@ -21,7 +23,30 @@ function friendlyError(status: number, fallback: string): string {
   if (status === 401) return "I couldn't answer that from local knowledge. Add an API key in Settings (optional) to unlock full AI answers.";
   if (status === 429) return "The provider is rate-limited. Please wait a moment and try again.";
   if (status === 502) return "The AI provider or local model could not be reached. Check your connection, key and model, then try again.";
+  // v9: a 504 is the server's clear "provider did not answer in time"
+  // path (or a platform gateway timeout) — say so instead of "Something
+  // went wrong".
+  if (status === 504) return "The AI provider did not answer in time. Check your connection and the key in Settings, then try again.";
   return fallback;
+}
+
+// Photo quality warning (preview v7, Test 18 gap): computed on-device in
+// the image pipeline, this warns BEFORE a blurry or dark photo is sent.
+// Advice only — sending is never blocked, because a photo of food (not a
+// label) needs no readable text. First person, plain paragraph, no
+// headings — same answer style as FOODLENS replies.
+function photoQualityNotice(images: ChatImage[]): string | null {
+  const names = (list: ChatImage[]) => list.map((i) => i.name).join(", ");
+  const blurry = images.filter((i) => i.quality?.blurry || i.quality?.flat);
+  const dark = images.filter((i) => i.quality?.dark);
+  const parts: string[] = [];
+  if (blurry.length > 0) {
+    parts.push(`This photo looks blurry to me: ${names(blurry)}. If it is a label, I may not be able to read the ingredients from it reliably, and I would rather you retake it steady, close to the label and in focus than have me guess and get it wrong. If it is just a photo of food, you can send it as it is.`);
+  }
+  if (dark.length > 0) {
+    parts.push(`This photo looks quite dark to me: ${names(dark)}. Dim light is where I misread labels most, so I would retake it with more light on the label before sending it for a label check.`);
+  }
+  return parts.length > 0 ? parts.join(" ") : null;
 }
 
 export default function Home() {
@@ -46,7 +71,6 @@ export default function Home() {
   const [keyInput, setKeyInput] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [keySaved, setKeySaved] = useState(false);
-  const [models, setModels] = useState<string[]>([]);
   const [testStatus, setTestStatus] = useState("");
   const [barcodeCode, setBarcodeCode] = useState("");
   const [barcodeResult, setBarcodeResult] = useState<BarcodeProduct | null>(null);
@@ -60,6 +84,25 @@ export default function Home() {
   const [pendingConfirm, setPendingConfirm] = useState<{ chatId: string; transcription: string; question: string } | null>(null);
   const [confirmDraft, setConfirmDraft] = useState("");
   const abortRef = useRef<AbortController | null>(null);
+  // Local-answer animation (no-key path): the typing pause and the
+  // word-by-word reveal run on timers. The refs let Stop cancel them
+  // and let the unmount cleanup clear a pending timer.
+  const localTimerRef = useRef<number | null>(null);
+  const localResolveRef = useRef<(() => void) | null>(null);
+  const localStopRef = useRef(false);
+
+  // Stop whatever is generating: abort the cloud fetch and cancel the
+  // local typing/reveal animation. The reveal promise resolves so the
+  // local branch can save what has been shown so far.
+  const stopReply = useCallback(() => {
+    abortRef.current?.abort();
+    localStopRef.current = true;
+    if (localTimerRef.current !== null) {
+      window.clearTimeout(localTimerRef.current);
+      localTimerRef.current = null;
+    }
+    localResolveRef.current?.();
+  }, []);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const cameraRef = useRef<HTMLInputElement | null>(null);
@@ -79,7 +122,11 @@ export default function Home() {
       setChats(loadedChats);
       if (savedSettings) setSettings({ ...DEFAULT_SETTINGS, ...savedSettings });
       setSettingsLoaded(true);
-      setKeySaved(await hasStoredApiKey((savedSettings?.provider || DEFAULT_SETTINGS.provider) as ProviderId));
+      // Verify the key actually loads, not just that a blob exists: a
+      // blob saved before the key vault was made persistent (v4) can
+      // never decrypt, and must not make Settings claim a key is
+      // stored. loadApiKey drops such a stale blob on a failed load.
+      setKeySaved((await loadApiKey((savedSettings?.provider || DEFAULT_SETTINGS.provider) as ProviderId)) !== null);
     } catch {
       setLoadError("Chats and settings could not be loaded from this browser. Your data was not deleted. Try reloading, or use Retry below.");
     }
@@ -88,7 +135,17 @@ export default function Home() {
   useEffect(() => {
     loadAll();
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    return () => {
+      if (localTimerRef.current !== null) window.clearTimeout(localTimerRef.current);
+    };
   }, [loadAll]);
+
+  // Desktop starts with the sidebar open; mobile starts closed. Done
+  // after mount so the first render matches the server (no hydration
+  // mismatch) and the sidebar simply slides in on wide screens.
+  useEffect(() => {
+    if (window.innerWidth > 720) setSidebarOpen(true);
+  }, []);
 
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme === "system" ? (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark") : settings.theme;
@@ -139,7 +196,8 @@ export default function Home() {
   }, [active]);
 
   // Returns true when a reply (full or partial) was saved, false when
-  // nothing was sent — callers restore the user's draft in that case.
+  // nothing was sent. The prompt bar is never restored on failure —
+  // the message is already in the chat history.
   async function streamReply(chat: Chat, history: ChatMessage[], opts?: { mode?: "transcribe" | "analyse-confirmed"; confirmedIngredients?: string; barcodeData?: BarcodeProduct }): Promise<{ sent: boolean; text: string; model?: string }> {
     const cap = PROVIDER_CAPABILITIES.find((p) => p.id === settings.provider)!;
     // In analyse-confirmed mode the route strips image parts, so the
@@ -158,24 +216,69 @@ export default function Home() {
       setError("Photos need an online vision provider, or a local Ollama model with vision support. The local text path in this build cannot see photos. Your message was kept — remove the photos or switch provider in Settings.");
       return { sent: false, text: "" };
     }
-    // No-key path: when no API key is saved for this provider, answer
-    // from FOODLENS local knowledge instead of failing outright. The
-    // cloud path with a key is untouched. Photo flows (transcribe /
-    // analyse-confirmed) need vision, so they always use the provider.
+    // Local answers are instant, so animate them like a real chatbot:
+    // typing dots first (~1.2s), then the answer revealed word by word
+    // with a blinking cursor. One helper serves every local reply: the
+    // no-key guard path below and the server fallbacks after the fetch.
+    async function replyLocally(targetChat: Chat, targetHistory: ChatMessage[], localText: string): Promise<{ sent: boolean; text: string; model?: string }> {
+      setGenerating(true);
+      localStopRef.current = false;
+      const assistant: ChatMessage = { id: crypto.randomUUID(), role: "assistant", text: "", createdAt: Date.now(), status: "typing", model: "FOODLENS local answers" };
+      const working: Chat = { ...targetChat, messages: [...targetHistory, assistant] };
+      setChats((prev) => prev.map((c) => (c.id === targetChat.id ? working : c)));
+      const updateLocal = (text: string, status: "typing" | "streaming" | "done") => {
+        setChats((prev) => prev.map((c) => (c.id === targetChat.id ? { ...c, messages: c.messages.map((m) => (m.id === assistant.id ? { ...m, text, status } : m)) } : c)));
+      };
+      // Split keeping the whitespace so the reveal rebuilds the exact text.
+      const parts = localText.split(/(\s+)/).filter((p) => p.length > 0);
+      let shown = "";
+      let partIdx = 0;
+      let typingTicks = 0;
+      const TYPING_TICKS = 34; // 34 x 35ms ≈ 1.2s of typing dots
+      await new Promise<void>((resolve) => {
+        localResolveRef.current = resolve;
+        const tick = () => {
+          if (localStopRef.current) { resolve(); return; }
+          if (typingTicks < TYPING_TICKS) {
+            typingTicks++;
+            localTimerRef.current = window.setTimeout(tick, 35);
+            return;
+          }
+          const chunk = parts.slice(partIdx, partIdx + 2).join("");
+          partIdx += 2;
+          shown += chunk;
+          updateLocal(shown, "streaming");
+          if (partIdx >= parts.length) { resolve(); return; }
+          localTimerRef.current = window.setTimeout(tick, 35);
+        };
+        localTimerRef.current = window.setTimeout(tick, 35);
+      });
+      localResolveRef.current = null;
+      localTimerRef.current = null;
+      const stopped = localStopRef.current;
+      // Stopped before a word appeared: the answer was already computed,
+      // so deliver it whole rather than leaving an empty bubble.
+      const finalText = stopped && shown === "" ? localText : stopped ? shown : localText;
+      const doneMsg: ChatMessage = { ...assistant, text: finalText, status: "done" };
+      const finalChat: Chat = { ...targetChat, messages: [...targetHistory, doneMsg], title: targetChat.messages.length <= 1 ? (targetHistory[0]?.text.slice(0, 48) || "New chat") : targetChat.title };
+      await saveChat(finalChat);
+      setGenerating(false);
+      return { sent: true, text: finalText, model: "FOODLENS local answers" };
+    }
+    // No-key path: when no API key is saved for this provider, the
+    // server may still hold a shared key (an env key, e.g. Groq), so
+    // greetings and guard replies stay local-first (instant, never
+    // touch the provider) while other questions try the server first.
+    // The server answers 401 with code "no_key" when no key exists
+    // anywhere; the fetch error handling below then answers locally.
     const savedKey = await loadApiKey(settings.provider);
     if (settings.provider !== "local" && !savedKey && images.length === 0 && !opts?.mode) {
       const lastUserText = [...history].reverse().find((m) => m.role === "user")?.text || "";
       const guard = classifyUserText(lastUserText, false);
-      const localText = guard ? guard.text : answerLocally(lastUserText, { barcodeData: opts?.barcodeData });
-      if (localText) {
-        const doneMsg: ChatMessage = { id: crypto.randomUUID(), role: "assistant", text: localText, createdAt: Date.now(), status: "done", model: "FOODLENS local answers" };
-        const finalChat: Chat = { ...chat, messages: [...history, doneMsg], title: chat.messages.length <= 1 ? (history[0]?.text.slice(0, 48) || "New chat") : chat.title };
-        await saveChat(finalChat);
-        return { sent: true, text: localText, model: "FOODLENS local answers" };
+      if (guard) {
+        return replyLocally(chat, history, guard.text);
       }
-      // No local answer for this question: fall through to the cloud
-      // call, which returns the usual "no key" message when no key
-      // exists anywhere.
+      // No guard: fall through to the cloud call below.
     }
     setGenerating(true);
     setThinking(true);
@@ -188,6 +291,27 @@ export default function Home() {
     let fullText = "";
     let streamed = false;
     let modelUsed: string | undefined;
+    // v9: "Thinking…" must never sit for minutes. Three watchdogs:
+    // (1) the server's first byte within 45 s (covers a stalled
+    // phone network or a platform that never responds), (2) a stream
+    // chunk at least every 40 s once replying starts, (3) a hard
+    // 3-minute total cap. When one fires, the fetch is aborted with a
+    // clear reason so the user sees exactly what happened. The server
+    // has its own 30 s timeouts, so in normal operation the server's
+    // clear message arrives first; these are the client-side backstop.
+    const FIRST_BYTE_TIMEOUT_MS = 45_000;
+    const CHUNK_INACTIVITY_MS = 40_000;
+    const TOTAL_CAP_MS = 180_000;
+    let watchdogReason: "first-byte" | "inactivity" | "total" | null = null;
+    let firstByteArrived = false;
+    let serverError: string | null = null;
+    let httpError: string | null = null;
+    let inactivityTimer: number | null = null;
+    const clearInactivity = () => { if (inactivityTimer !== null) { window.clearTimeout(inactivityTimer); inactivityTimer = null; } };
+    const armInactivity = () => { clearInactivity(); inactivityTimer = window.setTimeout(() => { watchdogReason = "inactivity"; controller.abort(); }, CHUNK_INACTIVITY_MS); };
+    const firstByteTimer = window.setTimeout(() => { if (!firstByteArrived) { watchdogReason = "first-byte"; controller.abort(); } }, FIRST_BYTE_TIMEOUT_MS);
+    const totalTimer = window.setTimeout(() => { watchdogReason = "total"; controller.abort(); }, TOTAL_CAP_MS);
+    const clearWatchdogs = () => { window.clearTimeout(firstByteTimer); window.clearTimeout(totalTimer); clearInactivity(); };
     try {
       const apiKey = savedKey;
       const res = await fetch("/api/chat", {
@@ -207,11 +331,32 @@ export default function Home() {
           messages: history.map((m) => ({ role: m.role, text: m.text, images: m.images?.map((i) => ({ dataUrl: i.dataUrl, mime: i.mime })) })),
         }),
       });
+      firstByteArrived = true;
+      window.clearTimeout(firstByteTimer);
+      armInactivity();
       setThinking(false);
       setStatusLine("");
       if (!res.ok) {
-        let msg = friendlyError(res.status, "Something went wrong. Your draft was kept — try again.");
-        try { const j = await res.json(); if (j?.error) msg = j.error; } catch { /* keep friendly message */ }
+        let msg = friendlyError(res.status, `The reply could not start — the server returned an error (${res.status}). Your message is saved in the chat — try again in a moment.`);
+        let errorCode: string | null = null;
+        try { const j = await res.json(); if (j?.error) msg = j.error; if (typeof j?.code === "string") errorCode = j.code; } catch { /* keep friendly message */ }
+        // v12: the server has no key anywhere — answer from local
+        // knowledge instead of showing the "add a key" message. The
+        // cloud assistant bubble created above is removed first so
+        // the local reply is the only assistant message.
+        if (res.status === 401 && errorCode === "no_key" && !savedKey && images.length === 0 && !opts?.mode) {
+          const lastUserText = [...history].reverse().find((m) => m.role === "user")?.text || "";
+          // Pass the recent chat (excluding this new message) so
+          // follow-ups like "why?" can resolve "that".
+          const prevTurns = history.slice(0, -1).slice(-6).map((m) => ({ role: m.role, text: m.text }));
+          const localText = answerLocally(lastUserText, { barcodeData: opts?.barcodeData, history: prevTurns });
+          if (localText) {
+            const withoutAssistant: Chat = { ...working, messages: working.messages.filter((m) => m.id !== assistant.id) };
+            setChats((prev) => prev.map((c) => (c.id === chat.id ? withoutAssistant : c)));
+            return await replyLocally(chat, history, localText);
+          }
+        }
+        httpError = msg;
         throw new Error(msg);
       }
       const reader = res.body!.getReader();
@@ -220,6 +365,8 @@ export default function Home() {
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
+        // v9: a chunk arrived — the reply is alive; reset the clock.
+        armInactivity();
         buf += decoder.decode(value, { stream: true });
         const lines = buf.split("\n");
         buf = lines.pop() || "";
@@ -228,15 +375,26 @@ export default function Home() {
           const payload = line.slice(5).trim();
           if (payload === "[DONE]") continue;
           try {
-            const j = JSON.parse(payload) as { delta?: string; model?: string };
+            const j = JSON.parse(payload) as { delta?: string; model?: string; error?: string };
             if (j.model) modelUsed = j.model;
+            // v9: the server's timeout/stall messages arrive as error
+            // events — show that exact text, and keep what streamed.
+            if (j.error) {
+              serverError = j.error;
+              throw new Error(j.error);
+            }
             if (j.delta) {
               fullText += j.delta;
               streamed = true;
               const current = fullText;
               setChats((prev) => prev.map((c) => (c.id === chat.id ? { ...c, messages: c.messages.map((m) => (m.id === assistant.id ? { ...m, text: current } : m)) } : c)));
             }
-          } catch { /* ignore partial SSE lines */ }
+          } catch (e) {
+            // A server error event must propagate, not be swallowed as
+            // a partial-line parse error.
+            if (serverError) throw e;
+            /* ignore partial SSE lines */
+          }
         }
       }
             // Deterministic backstop (Batch 2): in analyse-confirmed mode, flag
@@ -249,15 +407,52 @@ export default function Home() {
       await saveChat(finalChat);
       return { sent: true, text: fullText, model: modelUsed };
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Something went wrong.";
+      // v12: the server could not be reached at all (offline) and no
+      // key is saved — answer from local knowledge instead of an error.
+      // Watchdog aborts and server errors are not covered: a slow
+      // provider must still surface its timeout, not a local guess.
+      if (!savedKey && images.length === 0 && !opts?.mode && !firstByteArrived && !httpError && !serverError && !controller.signal.aborted) {
+        const lastUserText = [...history].reverse().find((m) => m.role === "user")?.text || "";
+        const prevTurns = history.slice(0, -1).slice(-6).map((m) => ({ role: m.role, text: m.text }));
+        const localText = answerLocally(lastUserText, { barcodeData: opts?.barcodeData, history: prevTurns });
+        if (localText) {
+          const withoutAssistant: Chat = { ...working, messages: working.messages.filter((m) => m.id !== assistant.id) };
+          setChats((prev) => prev.map((c) => (c.id === chat.id ? withoutAssistant : c)));
+          return await replyLocally(chat, history, localText);
+        }
+      }
+      // v9: name what actually happened instead of a generic "Something
+      // went wrong": server timeout/stall message > client watchdog >
+      // user Stop > lost connection > raw error.
+      let msg: string;
+      if (serverError) {
+        msg = serverError;
+      } else if (httpError) {
+        // The server answered with a clear error before any stream
+        // started (timeout, bad key, quota…) — keep its exact text.
+        msg = httpError;
+      } else if (controller.signal.aborted && watchdogReason === "first-byte") {
+        msg = "The AI provider did not answer in time — I stopped waiting after 45 seconds. This is usually a slow or blocked connection, or the provider being down. Check your connection and the key in Settings, then try again.";
+      } else if (controller.signal.aborted && watchdogReason === "inactivity") {
+        msg = "The reply stopped part-way through — no new text arrived for 40 seconds, so I stopped waiting. What arrived so far is saved in your chat. Check your connection and try again.";
+      } else if (controller.signal.aborted && watchdogReason === "total") {
+        msg = "The reply was still going after three minutes, so I stopped it. What arrived so far is saved in your chat — try again, or ask a shorter question.";
+      } else if (controller.signal.aborted) {
+        msg = "Generation stopped. The partial reply was kept.";
+      } else if (firstByteArrived) {
+        msg = "The connection was lost before the reply finished. What arrived so far is saved in your chat. Check your connection and try again.";
+      } else {
+        msg = e instanceof Error && e.message ? e.message : "The request could not reach the server. Check your connection — your message is saved in the chat, try again.";
+      }
       // Partial replies are saved, never discarded silently.
       const partial: ChatMessage = { ...assistant, text: fullText || msg, status: "error" };
       const partialChat: Chat = { ...working, messages: working.messages.map((m) => (m.id === assistant.id ? partial : m)) };
       setChats((prev) => prev.map((c) => (c.id === chat.id ? partialChat : c)));
       await putChat(partialChat).catch(() => undefined);
-      setError(controller.signal.aborted ? "Generation stopped. The partial reply was kept." : msg);
+      setError(msg);
       return { sent: streamed, text: fullText, model: modelUsed };
     } finally {
+      clearWatchdogs();
       setGenerating(false);
       setThinking(false);
       setStatusLine("");
@@ -273,7 +468,6 @@ export default function Home() {
     if (generating) return;
     setError(null);
     const chat = baseChat ?? ensureChat();
-    const draftText = content;
     const draftAttachments = attachments;
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: "user", text: content || "(photo attached)", images: attachments.length ? [...attachments] : undefined, createdAt: Date.now(), status: "done" };
     const history = [...(baseHistory ?? chat.messages), userMsg];
@@ -292,12 +486,10 @@ export default function Home() {
       setPendingConfirm({ chatId: chat.id, transcription: result.text, question: content });
       setConfirmDraft(result.text);
     }
-    if (!result.sent) {
-      // Nothing reached the provider: restore the draft so the user
-      // does not lose what they typed or attached.
-      setInput(draftText);
-      setAttachments(draftAttachments);
-    }
+    // The prompt bar stays cleared even when the reply failed: the
+    // user's message (text and any photos) is already saved in the chat
+    // history, and the error text explains the failed reply. Restoring
+    // the draft here used to leave the prompt sitting in the bar.
   }
 
   // Step 2 of the photo flow: only the confirmed text is analysed.
@@ -345,9 +537,12 @@ export default function Home() {
     setTestStatus("Testing…");
     try {
       const apiKey = await loadApiKey(settings.provider);
+      // v9: bounded like the chat path — "Testing…" must never hang
+      // either. 30 s to the first chunk is generous for a live check.
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(30_000),
         body: JSON.stringify({ provider: settings.provider, model: settings.model || undefined, customBaseUrl: settings.customBaseUrl || undefined, apiKey: apiKey || undefined, messages: [{ role: "user", text: "In one short sentence, what is FOODLENS?" }] }),
       });
       if (!res.ok) {
@@ -360,22 +555,11 @@ export default function Home() {
       await reader.read();
       await reader.cancel().catch(() => undefined);
       setTestStatus("Connection OK — the provider responded.");
-    } catch {
-      setTestStatus("Failed: could not reach the provider. Check your connection, key and model.");
-    }
-  }
-
-  async function loadModels() {
-    try {
-      const apiKey = await loadApiKey(settings.provider);
-      // Key travels in a header, never in the URL (URLs are logged and
-      // kept in browser history). The server also accepts the env key.
-      const params = new URLSearchParams({ provider: settings.provider, baseUrl: settings.customBaseUrl });
-      const res = await fetch(`/api/models?${params}`, { headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {} });
-      const j = await res.json();
-      setModels(Array.isArray(j.models) ? j.models : []);
-    } catch {
-      setModels([]);
+    } catch (e) {
+      const timedOut = e instanceof Error && (e as Error & { name?: string }).name === "TimeoutError";
+      setTestStatus(timedOut
+        ? "Failed: the provider did not answer within 30 seconds. Check your connection, key and model."
+        : "Failed: could not reach the provider. Check your connection, key and model.");
     }
   }
 
@@ -432,12 +616,12 @@ export default function Home() {
   return (
     <div className="app" style={{ "--sidebar-top": `${sidebarTop}px` } as React.CSSProperties}>
       {sidebarOpen && <div className="sidebar-backdrop" aria-hidden="true" onClick={() => setSidebarOpen(false)} />}
-      <aside className={`sidebar ${sidebarOpen ? "open" : ""}`} aria-label="Chat history">
+      <aside className={`sidebar ${sidebarOpen ? "open" : "collapsed"}`} aria-label="Chat history">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <div className="logo">FOOD<span>LENS</span></div>
           <button type="button" className="sidebar-close" aria-label="Close history" onClick={() => setSidebarOpen(false)}>✕</button>
         </div>
-        <button className="btn" onClick={() => { const c = newChat(); setChats((p) => [c, ...p]); setActiveId(c.id); setSidebarOpen(false); }}>+ New chat</button>
+        <button className="btn" onClick={() => { const c = newChat(); setChats((p) => [c, ...p]); setActiveId(c.id); if (window.innerWidth <= 720) setSidebarOpen(false); }}>+ New chat</button>
         <input type="search" placeholder="Search chats" aria-label="Search chats" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
         {loadError ? (
           <div className="panel error" role="alert">
@@ -450,23 +634,23 @@ export default function Home() {
           <ul style={{ listStyle: "none", margin: 0, padding: 0, overflowY: "auto" }}>
             {filtered.map((c) => (
               <li key={c.id} style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 4px" }}>
-                <button className={`chat-item ${c.id === activeId ? "active" : ""}`} style={{ flex: 1 }} onClick={() => { setActiveId(c.id); setSidebarOpen(false); }}>
+                <button className={`chat-item ${c.id === activeId ? "active" : ""}`} style={{ flex: 1 }} onClick={() => { setActiveId(c.id); if (window.innerWidth <= 720) setSidebarOpen(false); }}>
                   {c.title}
                 </button>
-                <button aria-label={`Rename chat ${c.title}`} onClick={async () => { const name = window.prompt("Rename chat", c.title); if (name && name.trim()) await saveChat({ ...c, title: name.trim().slice(0, 60) }); }}>✎</button>
-                <button aria-label={`Delete chat ${c.title}`} onClick={async () => { await deleteChat(c.id); setChats((p) => p.filter((x) => x.id !== c.id)); if (activeId === c.id) setActiveId(null); }}>✕</button>
+                <button type="button" className="icon-btn" aria-label={`Rename chat ${c.title}`} onClick={async () => { const name = window.prompt("Rename chat", c.title); if (name && name.trim()) await saveChat({ ...c, title: name.trim().slice(0, 60) }); }}>✎</button>
+                <button type="button" className="icon-btn" aria-label={`Delete chat ${c.title}`} onClick={async () => { await deleteChat(c.id); setChats((p) => p.filter((x) => x.id !== c.id)); if (activeId === c.id) setActiveId(null); }}>✕</button>
               </li>
             ))}
           </ul>
         )}
         <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
-          <button className="btn secondary" onClick={() => { setShowSettings(true); setSidebarOpen(false); loadModels(); }}>Settings</button>
+          <button className="btn secondary" onClick={() => { setShowSettings(true); if (window.innerWidth <= 720) setSidebarOpen(false); }}>Settings</button>
         </div>
       </aside>
 
       <main className="main">
         <header ref={headerRef} className="topbar">
-          <button className="btn secondary" aria-label="Open history" aria-expanded={sidebarOpen} onClick={() => setSidebarOpen((v) => !v)}>☰</button>
+          <button className="btn secondary" aria-label={sidebarOpen ? "Close history" : "Open history"} aria-expanded={sidebarOpen} onClick={() => setSidebarOpen((v) => !v)}>☰</button>
           <strong>FOODLENS</strong>
           <span className="tagline">Chat before you eat unhealthy.</span>
           <span className="topbar-note" style={{ color: "var(--muted)", fontSize: 12 }}>General food information, not medical advice. Always check allergens on the real label.</span>
@@ -494,11 +678,13 @@ export default function Home() {
                     <img key={img.id} className="thumbs" src={img.dataUrl} alt={img.name} onClick={() => setLightbox(img.dataUrl)} />
                   ))}
                   {m.text ? <Markdown text={m.text} /> : null}
+                  {m.status === "typing" && <span className="dots" aria-label="FOODLENS is typing"><span /><span /><span /></span>}
                   {m.role === "assistant" && idx > 0 && active.messages[idx - 1].role === "user" && (active.messages[idx - 1].images?.length || 0) > 0 && (
                     <p style={{ fontSize: 12, color: "var(--muted)", borderTop: "1px solid var(--border)", paddingTop: 6, marginTop: 8 }}>Please verify against the real label</p>
                   )}
                   {m.status === "streaming" && <span className="cursor" aria-hidden="true" />}
                 </div>
+                {m.status !== "typing" && m.status !== "streaming" && (
                 <div className="meta">
                   <button onClick={() => navigator.clipboard.writeText(m.text).catch(() => undefined)}>Copy</button>
                   {m.role === "assistant" && (
@@ -540,6 +726,7 @@ export default function Home() {
                     <button onClick={() => { setEditingId(m.id); setInput(m.text); }}>Edit &amp; resend</button>
                   )}
                 </div>
+                )}
               </article>
             ))}
 
@@ -569,6 +756,9 @@ export default function Home() {
             <button className="btn secondary" type="button" onClick={() => setPendingBarcode(null)}>Remove</button>
           </p>
         )}
+        {photoQualityNotice(attachments) && (
+          <p className="notice" role="status">{photoQualityNotice(attachments)}</p>
+        )}
         <form className="composer" onSubmit={(e) => { e.preventDefault(); if (editingId && active) { const idx = active.messages.findIndex((x) => x.id === editingId); const history = active.messages.slice(0, idx); const trimmed = { ...active, messages: history }; setEditingId(null); saveChat(trimmed).then(() => send(undefined, trimmed, history)); } else send(); }}
           onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files); }}
           onDragOver={(e) => e.preventDefault()}
@@ -596,7 +786,7 @@ export default function Home() {
               <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ""; }} />
               <span style={{ flex: 1 }} />
               {generating ? (
-                <button type="button" className="btn" onClick={() => abortRef.current?.abort()}>Stop</button>
+                <button type="button" className="btn" onClick={stopReply}>Stop</button>
               ) : (
                 <button type="submit" className="btn" disabled={!input.trim() && attachments.length === 0} aria-label="Send message">Send</button>
               )}
@@ -612,89 +802,41 @@ export default function Home() {
         <dialog open aria-label="Settings" onClose={() => setShowSettings(false)}>
           <h2>Settings</h2>
           <label>Provider<br />
-            <select value={settings.provider} onChange={(e) => { const p = e.target.value as ProviderId; setSettings((s) => ({ ...s, provider: p, model: "" })); setKeySaved(false); }}>
+            <select value={settings.provider} onChange={async (e) => { const p = e.target.value as ProviderId; setSettings((s) => ({ ...s, provider: p, model: "" })); setKeyInput(""); setKeySaved((await loadApiKey(p)) !== null); }}>
               {PROVIDER_CAPABILITIES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
             </select>
           </label>
-          <label style={{ display: "block", marginTop: 10 }}>Model (fetched dynamically where the provider supports it)<br />
-            {models.length > 0 ? (
-              <select value={settings.model} onChange={(e) => setSettings((s) => ({ ...s, model: e.target.value }))}>
-                <option value="">Choose a model…</option>
-                {models.map((m) => <option key={m} value={m}>{m}</option>)}
-              </select>
-            ) : (
-              <input type="text" value={settings.model} placeholder="e.g. type a model name" onChange={(e) => setSettings((s) => ({ ...s, model: e.target.value }))} />
-            )}
-            <button type="button" className="btn secondary" onClick={loadModels}>Refresh models</button>
+          <label style={{ display: "block", marginTop: 10 }}>Model<br />
+            <input type="text" value={settings.model} onChange={(e) => setSettings((s) => ({ ...s, model: e.target.value }))} placeholder={defaultModelForProvider(settings.provider)} autoComplete="off" />
           </label>
-          {settings.provider === "compatible" && (
-            <label style={{ display: "block", marginTop: 10 }}>Custom base URL (https, public addresses only)<br />
-              <input type="text" value={settings.customBaseUrl} onChange={(e) => setSettings((s) => ({ ...s, customBaseUrl: e.target.value }))} placeholder="https://example.com/v1" />
-            </label>
-          )}
-          {settings.provider === "local" && (
-            <label style={{ display: "block", marginTop: 10 }}>Local endpoint<br />
-              <input type="text" value={settings.customBaseUrl} onChange={(e) => setSettings((s) => ({ ...s, customBaseUrl: e.target.value }))} placeholder="http://localhost:11434" />
-            </label>
+          <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>Leave empty to use the default for this provider. Type any model name, or pick one below.</p>
+          {settings.provider === "huggingface" && (
+            <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+              {HF_MODEL_SUGGESTIONS.map((m) => (
+                <button key={m.id} type="button" className="btn secondary" onClick={() => setSettings((s) => ({ ...s, model: m.id }))}>{m.label}</button>
+              ))}
+            </div>
           )}
           {settings.provider !== "local" && (
             <div style={{ marginTop: 10 }}>
               <label>API key (optional)<br />
-                <input type={showKey ? "text" : "password"} value={keyInput} onChange={(e) => setKeyInput(e.target.value)} placeholder={keySaved ? "A key is stored for this session" : "Enter your API key"} autoComplete="off" />
+                <input type={showKey ? "text" : "password"} value={keyInput} onChange={(e) => setKeyInput(e.target.value)} placeholder={keySaved ? "A key is stored" : "Enter your API key"} autoComplete="off" />
               </label>
-              <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>Optional — adding a key unlocks full AI answers. Without a key, FOODLENS answers from its built-in local knowledge. Keys are encrypted in this browser only and must be re-entered after a reload.</p>
+              <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>Optional — adding a key unlocks full AI answers. Without a key, FOODLENS answers from its built-in local knowledge. Keys are encrypted and stored in this browser only.</p>
+              <p style={{ fontSize: 13, marginTop: 6 }}>{keySaved ? `Key saved for ${PROVIDER_CAPABILITIES.find((p) => p.id === settings.provider)?.label || settings.provider} — verified after saving.` : `No key saved for ${PROVIDER_CAPABILITIES.find((p) => p.id === settings.provider)?.label || settings.provider} yet.`}</p>
               <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
                 <button type="button" className="btn secondary" onClick={() => setShowKey((v) => !v)}>{showKey ? "Hide" : "Show"}</button>
-                <button type="button" className="btn secondary" onClick={async () => { if (!keyInput.trim()) return; await saveApiKey(settings.provider, keyInput.trim()); setKeySaved(true); setKeyInput(""); }}>Save key</button>
-                <button type="button" className="btn secondary" onClick={async () => { await removeApiKey(settings.provider); setKeySaved(false); }}>Remove key</button>
+                <button type="button" className="btn secondary" onClick={async () => { if (!keyInput.trim()) return; try { await saveApiKey(settings.provider, keyInput.trim()); setKeySaved(true); setKeyInput(""); setTestStatus(""); } catch { setTestStatus("Could not save the key in this browser. Check that storage is allowed, then try again."); } }}>Save key</button>
+                <button type="button" className="btn secondary" onClick={async () => { try { await removeApiKey(settings.provider); } catch { /* key is gone or storage failed; still show no key */ } setKeySaved(false); setTestStatus(""); }}>Remove key</button>
                 <button type="button" className="btn secondary" onClick={testConnection}>Test connection</button>
               </div>
               {testStatus && <p>{testStatus}</p>}
-              {settings.provider === "gemini" && (
-                <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 8 }}>
-                  No key yet? Get a free Gemini key in Google AI Studio: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">aistudio.google.com/apikey</a> — sign in with a Google account and choose “Create API key”. On Google’s free tier, your prompts and responses may be used by Google to improve its products; please check Google’s terms before sending anything sensitive. The free tier also has rate limits.
-                </p>
-              )}
             </div>
           )}
-          <label style={{ display: "block", marginTop: 10 }}>Theme<br />
-            <select value={settings.theme} onChange={(e) => setSettings((s) => ({ ...s, theme: e.target.value as Settings["theme"] }))}>
-              <option value="system">System</option><option value="dark">Dark</option><option value="light">Light</option>
-            </select>
-          </label>
-          <label style={{ display: "block", marginTop: 10 }}>
-            <input type="checkbox" checked={settings.searchEnabled} onChange={(e) => setSettings((s) => ({ ...s, searchEnabled: e.target.checked }))} /> Web search (Gemini and OpenAI only; ignored by Claude, compatible and local providers — off by default; only when current information is needed, with sources)
-          </label>
-          <label style={{ display: "block", marginTop: 10 }}>About me (optional: allergies, diet, halal, age — used as context, editable and deletable)<br />
-            <textarea value={settings.aboutMe} onChange={(e) => setSettings((s) => ({ ...s, aboutMe: e.target.value }))} rows={3} />
-          </label>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
-            <button type="button" className="btn secondary" onClick={async () => {
-              const blob = new Blob([JSON.stringify(chats, null, 2)], { type: "application/json" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a"); a.href = url; a.download = "foodlens-chats.json"; a.click(); URL.revokeObjectURL(url);
-            }}>Export chats (JSON, text only — photos are not included)</button>
-            <label className="btn secondary">Import chats<input type="file" accept="application/json" hidden onChange={async (e) => {
-              const f = e.target.files?.[0]; if (!f) return;
-              try {
-                const parsed = JSON.parse(await f.text()) as unknown;
-                // Validate shape: only FOODLENS chat objects are imported;
-                // anything else is rejected instead of corrupting IndexedDB.
-                const isValidChat = (c: unknown): c is Chat => {
-                  if (!c || typeof c !== "object") return false;
-                  const o = c as Record<string, unknown>;
-                  return typeof o.id === "string" && typeof o.title === "string" && Array.isArray(o.messages) && o.messages.every((m: unknown) => m && typeof m === "object" && ["user", "assistant"].includes((m as Record<string, unknown>).role as string) && typeof (m as Record<string, unknown>).text === "string");
-                };
-                const list = Array.isArray(parsed) ? parsed.filter(isValidChat) : [];
-                if (list.length === 0) { setError("That file contains no valid FOODLENS chats to import."); return; }
-                for (const c of list) await putChat(c);
-                await loadAll();
-              } catch { setError("That file could not be imported as FOODLENS chats."); }
-            }} /></label>
-            <button type="button" className="btn secondary" onClick={async () => { if (confirm("Delete all chats? This cannot be undone.")) { await clearChats(); setChats([]); setActiveId(null); } }}>Delete all chats</button>
-            <button type="button" className="btn secondary" onClick={async () => { if (confirm("Clear all app data, including settings and saved keys?")) { await clearAllData(); for (const p of PROVIDER_CAPABILITIES) { if (p.id !== "local") await removeApiKey(p.id).catch(() => undefined); } setChats([]); setSettings(DEFAULT_SETTINGS); setKeySaved(false); } }}>Clear app data</button>
             <button type="button" className="btn" onClick={() => setShowSettings(false)}>Done</button>
           </div>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 10 }}>FOODLENS {BUILD_LABEL}</p>
         </dialog>
       )}
 
