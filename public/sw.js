@@ -14,7 +14,9 @@
 // option in Settings reaches every phone on the next load.
 // v6 (preview v11): bumped again so the model picker in Settings
 // reaches every phone on the next load.
-const CACHE = "foodlens-shell-v6";
+// v7 (preview v12): bumped again so the Groq provider and the
+// server-first no-key flow reach every phone on the next load.
+const CACHE = "foodlens-shell-v7";
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/manifest.webmanifest"])).catch(() => undefined));
   self.skipWaiting();

@@ -16,4 +16,7 @@
 // preview v11: model picker in Settings (text input + curated Hugging
 // Face suggestions) and a route guard that blocks photos to known
 // text-only models with a clear message.
-export const BUILD_LABEL = "preview v11";
+// preview v12: Groq provider (free tier, gpt-oss-120b default) with a
+// shared server key, and server-first no-key flow — the client tries
+// the server and falls back to local answers on 401/no_key or offline.
+export const BUILD_LABEL = "preview v12";

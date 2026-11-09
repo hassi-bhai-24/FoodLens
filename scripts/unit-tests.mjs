@@ -30,7 +30,7 @@ const require = createRequire(join(root, "package.json"));
 const { classifyUserText } = require(join(out, "guards.js"));
 const { isExtremeWeightLoss } = require(join(out, "guards.js"));
 const { checkDigitValid } = require(join(out, "checkdigit.js"));
-const { isSafeHttpsUrl, isQuotaError, isModelNotFoundError, isInvalidKeyError, mapProviderError, clientRateLimitKey, isCustomBaseUrlAllowed, resolveTestOnlyBaseUrl, resolveGeminiBaseUrl, resolveOpenFoodFactsBaseUrl } = require(join(out, "proxy.js"));
+const { isSafeHttpsUrl, isQuotaError, isModelNotFoundError, isInvalidKeyError, mapProviderError, jsonError, clientRateLimitKey, isCustomBaseUrlAllowed, resolveTestOnlyBaseUrl, resolveGeminiBaseUrl, resolveOpenFoodFactsBaseUrl } = require(join(out, "proxy.js"));
 const { FOODLENS_SYSTEM_PROMPT } = require(join(out, "prompt.js"));
 const { TRANSCRIPTION_ONLY_INSTRUCTION } = require(join(out, "prompt.js"));
 const { flagUnverifiedAnalysis, extractENumbers, ALLERGEN_TERMS, assessImageQuality } = require(join(out, "photo-check.js"));
@@ -186,6 +186,14 @@ ok(/rejected this API key/i.test(mapProviderError(400, "API_KEY_INVALID").messag
 const credits = mapProviderError(402, "Purchase pre-paid credits to continue using Inference Providers.");
 ok(credits.status === 402 && /credits/i.test(credits.message), "HF 402 maps to friendly 402 naming credits");
 ok(!/rejected this API key/i.test(credits.message) && !/usage limit/i.test(credits.message), "credits message does not blame the key or quota");
+// v12: jsonError can carry a machine-readable code. The no-key 401
+// uses code "no_key" so the client can tell "no key anywhere" apart
+// from a rejected key and fall back to local answers.
+const noKeyRes = jsonError("no key", 401, "no_key");
+ok(noKeyRes.status === 401, "jsonError keeps the status with a code");
+const noKeyJson = await noKeyRes.json();
+ok(noKeyJson.code === "no_key" && noKeyJson.error === "no key", "jsonError carries the error code");
+ok((await jsonError("plain", 500).json()).code === undefined, "jsonError without a code has no code field");
 
 // Model defaults, env config and Gemini fallback chain (lib/models.ts)
 // v5: defaults are the providers' current models, verified 2026-11-06
@@ -201,6 +209,12 @@ ok(defaultModelForProvider("anthropic", {}) === "claude-sonnet-5-5", "Anthropic 
 ok(defaultModelForProvider("huggingface", {}) === "Qwen/Qwen3.8-27B", "Hugging Face built-in default is Qwen3.8 27B");
 ok(defaultModelForProvider("huggingface", { HF_MODEL: "moonshotai/Kimi-K3" }) === "moonshotai/Kimi-K3", "HF_MODEL env alias works");
 ok(resolveChatModel("huggingface", "", {}) === "Qwen/Qwen3.8-27B", "Hugging Face built-in default via resolveChatModel");
+// v12: Groq provider (lib/models.ts). Default is gpt-oss-120b, the
+// quality default on Groq's free tier (30 req/min, 1,000 req/day, no
+// card needed, verified Oct 2026).
+ok(defaultModelForProvider("groq", {}) === "openai/gpt-oss-120b", "Groq built-in default is gpt-oss-120b");
+ok(defaultModelForProvider("groq", { GROQ_MODEL: "openai/gpt-oss-20b" }) === "openai/gpt-oss-20b", "GROQ_MODEL env alias works");
+ok(resolveChatModel("groq", "", {}) === "openai/gpt-oss-120b", "Groq built-in default via resolveChatModel");
 // v11: curated Hugging Face quick picks (lib/models.ts). Every id was
 // verified live on the router 2026-11-09; the two text-only models are
 // the only ones without vision.
@@ -768,7 +782,7 @@ ok((await loadApiKey("anthropic")) === "verified-key-123", "v6: verified save lo
 // v6: the build label shown in Settings names this preview build, so a
 // bug report can say exactly which build is running. Pinned to the exact
 // current label and bumped with each preview-branch fix round.
-ok(BUILD_LABEL === "preview v11", "build label names the current preview build (v11)");
+ok(BUILD_LABEL === "preview v12", "build label names the current preview build (v12)");
 
 
 // ================= preview v7 =================
@@ -1061,9 +1075,11 @@ ok(v9PageSrc.includes("The connection was lost before the reply finished"), "v9 
 ok(v9PageSrc.includes("AbortSignal.timeout(30_000)"), "v9 client: Test connection is bounded too");
 ok(!v9PageSrc.includes("Something went wrong. Your message is saved"), "v9 client: the generic 'Something went wrong' fallback is gone");
 const v9SwSrc = readFileSync(join(root, "public", "sw.js"), "utf8");
-ok(v9SwSrc.includes('const CACHE = "foodlens-shell-v6"'), "v11 sw: app-shell cache bumped to v6 so stale shells are purged");
+ok(v9SwSrc.includes('const CACHE = "foodlens-shell-v7"'), "v12 sw: app-shell cache bumped to v7 so stale shells are purged");
 ok(v9PageSrc.includes("HF_MODEL_SUGGESTIONS"), "v11 client: Settings shows Hugging Face model suggestions");
 ok(v9PageSrc.includes("Leave empty to use the default"), "v11 client: model field explains the default");
+ok(v9PageSrc.includes("replyLocally"), "v12 client: local answers reuse one helper");
+ok(v9PageSrc.includes('"no_key"'), "v12 client: no-key server response falls back to local answers");
 
 console.log(`unit-tests: ${n} assertions passed`);
 rmSync(out, { recursive: true, force: true });

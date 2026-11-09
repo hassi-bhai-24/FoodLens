@@ -232,6 +232,6 @@ export function mapProviderError(status: number, bodyText = ""): ProviderErrorMa
   };
 }
 
-export function jsonError(message: string, status: number): Response {
-  return Response.json({ error: message }, { status });
+export function jsonError(message: string, status: number, code?: string): Response {
+  return Response.json(code ? { error: message, code } : { error: message }, { status });
 }

@@ -1,7 +1,7 @@
 import type { ImageQuality } from "./photo-check";
 
 export type Role = "user" | "assistant";
-export type ProviderId = "gemini" | "openai" | "anthropic" | "huggingface" | "compatible" | "local";
+export type ProviderId = "gemini" | "openai" | "anthropic" | "huggingface" | "groq" | "compatible" | "local";
 
 export interface ChatImage {
   id: string;
@@ -73,6 +73,7 @@ export const PROVIDER_CAPABILITIES: ProviderCapability[] = [
   { id: "openai", label: "OpenAI", vision: true, streaming: true, search: true, maxImages: 6, maxImageBytes: 20 * 1024 * 1024 },
   { id: "anthropic", label: "Anthropic Claude", vision: true, streaming: true, search: false, maxImages: 6, maxImageBytes: 5 * 1024 * 1024 },
   { id: "huggingface", label: "Hugging Face", vision: true, streaming: true, search: false, maxImages: 6, maxImageBytes: 20 * 1024 * 1024 },
+  { id: "groq", label: "Groq", vision: false, streaming: true, search: false, maxImages: 0, maxImageBytes: 0 },
   { id: "compatible", label: "OpenAI-compatible", vision: true, streaming: true, search: false, maxImages: 6, maxImageBytes: 20 * 1024 * 1024 },
   { id: "local", label: "Local (Ollama / llama.cpp)", vision: false, streaming: true, search: false, maxImages: 0, maxImageBytes: 0 },
 ];

@@ -13,6 +13,11 @@ export const ANTHROPIC_DEFAULT_MODEL = "claude-sonnet-5-5";
 // router's fastest providers, and the strongest open model that takes
 // photos. Verified live on the router 2026-11-09.
 export const HF_DEFAULT_MODEL = "Qwen/Qwen3.8-27B";
+// Groq default: gpt-oss-120b — Apache 2.0, the quality default on
+// Groq's free tier (30 req/min, 1,000 req/day, no card needed), and
+// fast (~525 tok/s). Text-only: Groq's free chat models do not take
+// photos in this build, so the provider has vision off.
+export const GROQ_DEFAULT_MODEL = "openai/gpt-oss-120b";
 
 // Curated Hugging Face models offered as quick picks in Settings (v11).
 // Every id was verified live on the router 2026-11-09, with the input
@@ -49,13 +54,14 @@ export const GEMINI_FALLBACK_MODELS: readonly string[] = [
   "gemini-3.5-flash-lite",
 ];
 
-export type ChatProvider = "gemini" | "openai" | "anthropic" | "huggingface" | "compatible" | "local";
+export type ChatProvider = "gemini" | "openai" | "anthropic" | "huggingface" | "groq" | "compatible" | "local";
 
 const ENV_KEYS: Record<ChatProvider, string[]> = {
   gemini: ["FOODLENS_GEMINI_MODEL", "GEMINI_MODEL"],
   openai: ["FOODLENS_OPENAI_MODEL", "OPENAI_MODEL"],
   anthropic: ["FOODLENS_ANTHROPIC_MODEL", "ANTHROPIC_MODEL"],
   huggingface: ["FOODLENS_HF_MODEL", "HF_MODEL"],
+  groq: ["FOODLENS_GROQ_MODEL", "GROQ_MODEL"],
   compatible: ["FOODLENS_COMPATIBLE_MODEL"],
   local: ["FOODLENS_LOCAL_MODEL", "OLLAMA_MODEL"],
 };
@@ -65,6 +71,7 @@ const BUILTIN_DEFAULTS: Record<ChatProvider, string> = {
   openai: OPENAI_DEFAULT_MODEL,
   anthropic: ANTHROPIC_DEFAULT_MODEL,
   huggingface: HF_DEFAULT_MODEL,
+  groq: GROQ_DEFAULT_MODEL,
   compatible: OPENAI_DEFAULT_MODEL,
   local: LOCAL_DEFAULT_MODEL,
 };

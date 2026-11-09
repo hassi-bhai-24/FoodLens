@@ -216,69 +216,69 @@ export default function Home() {
       setError("Photos need an online vision provider, or a local Ollama model with vision support. The local text path in this build cannot see photos. Your message was kept — remove the photos or switch provider in Settings.");
       return { sent: false, text: "" };
     }
-    // No-key path: when no API key is saved for this provider, answer
-    // from FOODLENS local knowledge instead of failing outright. The
-    // cloud path with a key is untouched. Photo flows (transcribe /
-    // analyse-confirmed) need vision, so they always use the provider.
+    // Local answers are instant, so animate them like a real chatbot:
+    // typing dots first (~1.2s), then the answer revealed word by word
+    // with a blinking cursor. One helper serves every local reply: the
+    // no-key guard path below and the server fallbacks after the fetch.
+    async function replyLocally(targetChat: Chat, targetHistory: ChatMessage[], localText: string): Promise<{ sent: boolean; text: string; model?: string }> {
+      setGenerating(true);
+      localStopRef.current = false;
+      const assistant: ChatMessage = { id: crypto.randomUUID(), role: "assistant", text: "", createdAt: Date.now(), status: "typing", model: "FOODLENS local answers" };
+      const working: Chat = { ...targetChat, messages: [...targetHistory, assistant] };
+      setChats((prev) => prev.map((c) => (c.id === targetChat.id ? working : c)));
+      const updateLocal = (text: string, status: "typing" | "streaming" | "done") => {
+        setChats((prev) => prev.map((c) => (c.id === targetChat.id ? { ...c, messages: c.messages.map((m) => (m.id === assistant.id ? { ...m, text, status } : m)) } : c)));
+      };
+      // Split keeping the whitespace so the reveal rebuilds the exact text.
+      const parts = localText.split(/(\s+)/).filter((p) => p.length > 0);
+      let shown = "";
+      let partIdx = 0;
+      let typingTicks = 0;
+      const TYPING_TICKS = 34; // 34 x 35ms ≈ 1.2s of typing dots
+      await new Promise<void>((resolve) => {
+        localResolveRef.current = resolve;
+        const tick = () => {
+          if (localStopRef.current) { resolve(); return; }
+          if (typingTicks < TYPING_TICKS) {
+            typingTicks++;
+            localTimerRef.current = window.setTimeout(tick, 35);
+            return;
+          }
+          const chunk = parts.slice(partIdx, partIdx + 2).join("");
+          partIdx += 2;
+          shown += chunk;
+          updateLocal(shown, "streaming");
+          if (partIdx >= parts.length) { resolve(); return; }
+          localTimerRef.current = window.setTimeout(tick, 35);
+        };
+        localTimerRef.current = window.setTimeout(tick, 35);
+      });
+      localResolveRef.current = null;
+      localTimerRef.current = null;
+      const stopped = localStopRef.current;
+      // Stopped before a word appeared: the answer was already computed,
+      // so deliver it whole rather than leaving an empty bubble.
+      const finalText = stopped && shown === "" ? localText : stopped ? shown : localText;
+      const doneMsg: ChatMessage = { ...assistant, text: finalText, status: "done" };
+      const finalChat: Chat = { ...targetChat, messages: [...targetHistory, doneMsg], title: targetChat.messages.length <= 1 ? (targetHistory[0]?.text.slice(0, 48) || "New chat") : targetChat.title };
+      await saveChat(finalChat);
+      setGenerating(false);
+      return { sent: true, text: finalText, model: "FOODLENS local answers" };
+    }
+    // No-key path: when no API key is saved for this provider, the
+    // server may still hold a shared key (an env key, e.g. Groq), so
+    // greetings and guard replies stay local-first (instant, never
+    // touch the provider) while other questions try the server first.
+    // The server answers 401 with code "no_key" when no key exists
+    // anywhere; the fetch error handling below then answers locally.
     const savedKey = await loadApiKey(settings.provider);
     if (settings.provider !== "local" && !savedKey && images.length === 0 && !opts?.mode) {
       const lastUserText = [...history].reverse().find((m) => m.role === "user")?.text || "";
       const guard = classifyUserText(lastUserText, false);
-      // Pass the recent chat (excluding this new message) so follow-ups
-      // like "why?" or "is that better than roti?" can resolve "that".
-      const prevTurns = history.slice(0, -1).slice(-6).map((m) => ({ role: m.role, text: m.text }));
-      const localText = guard ? guard.text : answerLocally(lastUserText, { barcodeData: opts?.barcodeData, history: prevTurns });
-      if (localText) {
-        // Local answers are instant, so animate them like a real chatbot:
-        // typing dots first (~0.7s), then the answer revealed word by word
-        // with a blinking cursor. The cloud path below is untouched.
-        setGenerating(true);
-        localStopRef.current = false;
-        const assistant: ChatMessage = { id: crypto.randomUUID(), role: "assistant", text: "", createdAt: Date.now(), status: "typing", model: "FOODLENS local answers" };
-        const working: Chat = { ...chat, messages: [...history, assistant] };
-        setChats((prev) => prev.map((c) => (c.id === chat.id ? working : c)));
-        const updateLocal = (text: string, status: "typing" | "streaming" | "done") => {
-          setChats((prev) => prev.map((c) => (c.id === chat.id ? { ...c, messages: c.messages.map((m) => (m.id === assistant.id ? { ...m, text, status } : m)) } : c)));
-        };
-        // Split keeping the whitespace so the reveal rebuilds the exact text.
-        const parts = localText.split(/(\s+)/).filter((p) => p.length > 0);
-        let shown = "";
-        let partIdx = 0;
-        let typingTicks = 0;
-        const TYPING_TICKS = 34; // 34 x 35ms ≈ 1.2s of typing dots
-        await new Promise<void>((resolve) => {
-          localResolveRef.current = resolve;
-          const tick = () => {
-            if (localStopRef.current) { resolve(); return; }
-            if (typingTicks < TYPING_TICKS) {
-              typingTicks++;
-              localTimerRef.current = window.setTimeout(tick, 35);
-              return;
-            }
-            const chunk = parts.slice(partIdx, partIdx + 2).join("");
-            partIdx += 2;
-            shown += chunk;
-            updateLocal(shown, "streaming");
-            if (partIdx >= parts.length) { resolve(); return; }
-            localTimerRef.current = window.setTimeout(tick, 35);
-          };
-          localTimerRef.current = window.setTimeout(tick, 35);
-        });
-        localResolveRef.current = null;
-        localTimerRef.current = null;
-        const stopped = localStopRef.current;
-        // Stopped before a word appeared: the answer was already computed,
-        // so deliver it whole rather than leaving an empty bubble.
-        const finalText = stopped && shown === "" ? localText : stopped ? shown : localText;
-        const doneMsg: ChatMessage = { ...assistant, text: finalText, status: "done" };
-        const finalChat: Chat = { ...chat, messages: [...history, doneMsg], title: chat.messages.length <= 1 ? (history[0]?.text.slice(0, 48) || "New chat") : chat.title };
-        await saveChat(finalChat);
-        setGenerating(false);
-        return { sent: true, text: finalText, model: "FOODLENS local answers" };
+      if (guard) {
+        return replyLocally(chat, history, guard.text);
       }
-      // No local answer for this question: fall through to the cloud
-      // call, which returns the usual "no key" message when no key
-      // exists anywhere.
+      // No guard: fall through to the cloud call below.
     }
     setGenerating(true);
     setThinking(true);
@@ -338,7 +338,24 @@ export default function Home() {
       setStatusLine("");
       if (!res.ok) {
         let msg = friendlyError(res.status, `The reply could not start — the server returned an error (${res.status}). Your message is saved in the chat — try again in a moment.`);
-        try { const j = await res.json(); if (j?.error) msg = j.error; } catch { /* keep friendly message */ }
+        let errorCode: string | null = null;
+        try { const j = await res.json(); if (j?.error) msg = j.error; if (typeof j?.code === "string") errorCode = j.code; } catch { /* keep friendly message */ }
+        // v12: the server has no key anywhere — answer from local
+        // knowledge instead of showing the "add a key" message. The
+        // cloud assistant bubble created above is removed first so
+        // the local reply is the only assistant message.
+        if (res.status === 401 && errorCode === "no_key" && !savedKey && images.length === 0 && !opts?.mode) {
+          const lastUserText = [...history].reverse().find((m) => m.role === "user")?.text || "";
+          // Pass the recent chat (excluding this new message) so
+          // follow-ups like "why?" can resolve "that".
+          const prevTurns = history.slice(0, -1).slice(-6).map((m) => ({ role: m.role, text: m.text }));
+          const localText = answerLocally(lastUserText, { barcodeData: opts?.barcodeData, history: prevTurns });
+          if (localText) {
+            const withoutAssistant: Chat = { ...working, messages: working.messages.filter((m) => m.id !== assistant.id) };
+            setChats((prev) => prev.map((c) => (c.id === chat.id ? withoutAssistant : c)));
+            return await replyLocally(chat, history, localText);
+          }
+        }
         httpError = msg;
         throw new Error(msg);
       }
@@ -390,6 +407,20 @@ export default function Home() {
       await saveChat(finalChat);
       return { sent: true, text: fullText, model: modelUsed };
     } catch (e) {
+      // v12: the server could not be reached at all (offline) and no
+      // key is saved — answer from local knowledge instead of an error.
+      // Watchdog aborts and server errors are not covered: a slow
+      // provider must still surface its timeout, not a local guess.
+      if (!savedKey && images.length === 0 && !opts?.mode && !firstByteArrived && !httpError && !serverError && !controller.signal.aborted) {
+        const lastUserText = [...history].reverse().find((m) => m.role === "user")?.text || "";
+        const prevTurns = history.slice(0, -1).slice(-6).map((m) => ({ role: m.role, text: m.text }));
+        const localText = answerLocally(lastUserText, { barcodeData: opts?.barcodeData, history: prevTurns });
+        if (localText) {
+          const withoutAssistant: Chat = { ...working, messages: working.messages.filter((m) => m.id !== assistant.id) };
+          setChats((prev) => prev.map((c) => (c.id === chat.id ? withoutAssistant : c)));
+          return await replyLocally(chat, history, localText);
+        }
+      }
       // v9: name what actually happened instead of a generic "Something
       // went wrong": server timeout/stall message > client watchdog >
       // user Stop > lost connection > raw error.
