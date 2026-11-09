@@ -10,7 +10,9 @@
 // v4 (preview v9): bumped again so every phone that ever cached an
 // older shell (v1/v3) drops it and picks up the v9 app code — a stale
 // cached shell was one suspect in the hang-then-fail report.
-const CACHE = "foodlens-shell-v4";
+// v5 (preview v10): bumped again so the new Hugging Face provider
+// option in Settings reaches every phone on the next load.
+const CACHE = "foodlens-shell-v5";
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/manifest.webmanifest"])).catch(() => undefined));
   self.skipWaiting();

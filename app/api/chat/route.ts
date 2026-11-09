@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 type InMsg = { role: "user" | "assistant"; text: string; images?: { dataUrl: string; mime: string }[] };
 
-const PROVIDERS = ["gemini", "openai", "anthropic", "compatible", "local"] as const;
+const PROVIDERS = ["gemini", "openai", "anthropic", "huggingface", "compatible", "local"] as const;
 const ALLOWED_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 // Provider image budget (smallest documented cap, Gemini): total image
 // bytes per request. Rejecting early avoids a confusing provider error.
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
         bytes += Math.floor((b64.length * 3) / 4);
       }
       if (bytes > MAX_IMAGE_BYTES) return jsonError("Photos are too large in total. Please use smaller photos (under 20 MB total).", 400);
-      if (b.provider === "local") return jsonError("Photos are not supported with the local model in this build. Choose Gemini, OpenAI, Claude or a compatible vision provider for photo questions.", 400);
+      if (b.provider === "local") return jsonError("Photos are not supported with the local model in this build. Choose Gemini, OpenAI, Claude, Hugging Face or a compatible vision provider for photo questions.", 400);
     }
   }
   const lastUser = [...b.messages].reverse().find((m) => m.role === "user");
@@ -176,7 +176,7 @@ export async function POST(req: NextRequest) {
   }
 
   const clientKey = typeof b.apiKey === "string" && b.apiKey.trim() ? b.apiKey.trim() : undefined;
-  const envName = b.provider === "gemini" ? "GEMINI_API_KEY" : b.provider === "openai" ? "OPENAI_API_KEY" : b.provider === "anthropic" ? "ANTHROPIC_API_KEY" : undefined;
+  const envName = b.provider === "gemini" ? "GEMINI_API_KEY" : b.provider === "openai" ? "OPENAI_API_KEY" : b.provider === "anthropic" ? "ANTHROPIC_API_KEY" : b.provider === "huggingface" ? "HF_API_KEY" : undefined;
   const apiKey = clientKey || (envName ? envKey(envName) : undefined);
   if (!apiKey) {
     return jsonError("I couldn't answer that from local knowledge. Add an API key in Settings (optional) to unlock full AI answers.", 401);
@@ -288,7 +288,8 @@ export async function POST(req: NextRequest) {
       }, claudeModel, { inactivityTimeoutMs: SSE_INACTIVITY_TIMEOUT_MS, abortUpstream: () => controller.abort() });
     }
 
-    // OpenAI + OpenAI-compatible
+    // OpenAI + OpenAI-compatible + Hugging Face (its router speaks
+    // the same chat-completions shape, so one branch serves all three).
     let baseUrl = "https://api.openai.com/v1";
     if (b.provider === "compatible") {
       if (!isCustomBaseUrlAllowed()) {
@@ -298,8 +299,12 @@ export async function POST(req: NextRequest) {
         return jsonError("Custom base URL must be a public https URL. Private, localhost and metadata addresses are blocked.", 400);
       }
       baseUrl = b.customBaseUrl.replace(/\/$/, "");
+    } else if (b.provider === "huggingface") {
+      // Fixed public router, not a user-supplied URL, so no SSRF check
+      // is needed here. The user's HF token is the Bearer key.
+      baseUrl = "https://router.huggingface.co/v1";
     }
-    const openaiModel = resolveChatModel(b.provider === "compatible" ? "compatible" : "openai", model, process.env);
+    const openaiModel = resolveChatModel(b.provider as "openai" | "compatible" | "huggingface", model, process.env);
     const payload: Record<string, unknown> = {
       model: openaiModel,
       stream: true,

@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   const customBaseUrl = req.nextUrl.searchParams.get("baseUrl") || "";
   const auth = req.headers.get("authorization") || "";
   const headerKey = auth.startsWith("Bearer ") ? auth.slice(7) : req.headers.get("x-api-key") || "";
-  const key = headerKey || envKey(provider === "gemini" ? "GEMINI_API_KEY" : provider === "openai" ? "OPENAI_API_KEY" : "ANTHROPIC_API_KEY");
+  const key = headerKey || envKey(provider === "gemini" ? "GEMINI_API_KEY" : provider === "openai" ? "OPENAI_API_KEY" : provider === "huggingface" ? "HF_API_KEY" : "ANTHROPIC_API_KEY");
   try {
     if (provider === "gemini" && key) {
       // Step B: same test-only localhost override as the chat route.
@@ -42,6 +42,13 @@ export async function GET(req: NextRequest) {
         base = customBaseUrl.replace(/\/$/, "");
       }
       const res = await fetch(`${base}/models`, { headers: { Authorization: `Bearer ${key}` }, redirect: "manual", signal: AbortSignal.timeout(10_000) });
+      if (res.status >= 300 && res.status < 400) return jsonError("Could not list models.", 502);
+      if (!res.ok) return jsonError("Could not list models.", 502);
+      const data = (await res.json()) as { data?: { id?: string }[] };
+      return Response.json({ models: (data.data || []).map((m) => m.id || "").filter(Boolean).sort() });
+    }
+    if (provider === "huggingface" && key) {
+      const res = await fetch("https://router.huggingface.co/v1/models", { headers: { Authorization: `Bearer ${key}` }, redirect: "manual", signal: AbortSignal.timeout(10_000) });
       if (res.status >= 300 && res.status < 400) return jsonError("Could not list models.", 502);
       if (!res.ok) return jsonError("Could not list models.", 502);
       const data = (await res.json()) as { data?: { id?: string }[] };

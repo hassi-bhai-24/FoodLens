@@ -159,6 +159,19 @@ export function isModelNotFoundError(status: number, bodyText = ""): boolean {
 }
 
 /**
+ * True when an upstream failure means the account has no credits
+ * or billing for this API. Hugging Face Inference Providers rejects
+ * a call on a free account with HTTP 402 ("Purchase pre-paid credits
+ * to continue using Inference Providers"). A 402 is not a bad key and
+ * not quota: the key is valid, the model exists, the account simply
+ * holds no credits.
+ */
+export function isCreditsError(status: number, bodyText = ""): boolean {
+  if (status === 402) return true;
+  return /purchase pre-paid credits|insufficient.*credit|payment required/i.test(bodyText);
+}
+
+/**
  * True when an upstream failure means the API key itself was rejected
  * (wrong key, revoked key, or the provider API not enabled for the
  * key's project) — NOT a bad model and NOT quota. Gemini rejects a bad
@@ -190,6 +203,13 @@ export function mapProviderError(status: number, bodyText = ""): ProviderErrorMa
       status: 429,
       message:
         "The AI provider's usage limit has been reached for this key or model. Please wait a little while and try again, or try a different model or key in Settings. No fallback model was tried for a quota error.",
+    };
+  }
+  if (isCreditsError(status, bodyText)) {
+    return {
+      status: 402,
+      message:
+        "This Hugging Face account needs credits to use Inference Providers. Buy pre-paid credits or subscribe to PRO, or use a free provider key instead.",
     };
   }
   if (isInvalidKeyError(status, bodyText)) {

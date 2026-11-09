@@ -180,6 +180,12 @@ const badKey = mapProviderError(400, "API_KEY_INVALID");
 ok(badKey.status === 401 && /rejected this API key/i.test(badKey.message), "bad key maps to distinct 401 with its own message");
 ok(mapProviderError(401, "Incorrect API key provided").status === 401, "OpenAI bad key maps to 401");
 ok(/rejected this API key/i.test(mapProviderError(400, "API_KEY_INVALID").message) && !/not available/i.test(mapProviderError(400, "API_KEY_INVALID").message), "bad-key message does not blame the model");
+// v10: Hugging Face 402 (no Inference Providers credits) is its own
+// error, not a bad key and not quota. Verified live 2026-11-09: the
+// router answered exactly this body on a free account.
+const credits = mapProviderError(402, "Purchase pre-paid credits to continue using Inference Providers.");
+ok(credits.status === 402 && /credits/i.test(credits.message), "HF 402 maps to friendly 402 naming credits");
+ok(!/rejected this API key/i.test(credits.message) && !/usage limit/i.test(credits.message), "credits message does not blame the key or quota");
 
 // Model defaults, env config and Gemini fallback chain (lib/models.ts)
 // v5: defaults are the providers' current models, verified 2026-11-06
@@ -192,6 +198,9 @@ ok(CHAT_TEMPERATURE === 0.3, "chat temperature is 0.3");
 ok(defaultModelForProvider("gemini", {}) === "gemini-3.8-flash", "Gemini built-in default is the current Flash model");
 ok(defaultModelForProvider("openai", {}) === "gpt-6-luna", "OpenAI built-in default is the current replacement model");
 ok(defaultModelForProvider("anthropic", {}) === "claude-sonnet-5-5", "Anthropic built-in default is the current Sonnet model");
+ok(defaultModelForProvider("huggingface", {}) === "Qwen/Qwen3.8-27B", "Hugging Face built-in default is Qwen3.8 27B");
+ok(defaultModelForProvider("huggingface", { HF_MODEL: "moonshotai/Kimi-K3" }) === "moonshotai/Kimi-K3", "HF_MODEL env alias works");
+ok(resolveChatModel("huggingface", "", {}) === "Qwen/Qwen3.8-27B", "Hugging Face built-in default via resolveChatModel");
 ok(defaultModelForProvider("gemini", { FOODLENS_GEMINI_MODEL: "gemini-custom" }) === "gemini-custom", "env default model wins over built-in");
 ok(defaultModelForProvider("gemini", { GEMINI_MODEL: "gemini-env" }) === "gemini-env", "GEMINI_MODEL env alias works");
 ok(resolveChatModel("gemini", "user-model", { FOODLENS_GEMINI_MODEL: "env-model" }) === "user-model", "user-chosen model takes precedence");
@@ -751,7 +760,7 @@ ok((await loadApiKey("anthropic")) === "verified-key-123", "v6: verified save lo
 // v6: the build label shown in Settings names this preview build, so a
 // bug report can say exactly which build is running. Pinned to the exact
 // current label and bumped with each preview-branch fix round.
-ok(BUILD_LABEL === "preview v9", "build label names the current preview build (v9)");
+ok(BUILD_LABEL === "preview v10", "build label names the current preview build (v10)");
 
 
 // ================= preview v7 =================
@@ -1044,7 +1053,7 @@ ok(v9PageSrc.includes("The connection was lost before the reply finished"), "v9 
 ok(v9PageSrc.includes("AbortSignal.timeout(30_000)"), "v9 client: Test connection is bounded too");
 ok(!v9PageSrc.includes("Something went wrong. Your message is saved"), "v9 client: the generic 'Something went wrong' fallback is gone");
 const v9SwSrc = readFileSync(join(root, "public", "sw.js"), "utf8");
-ok(v9SwSrc.includes('const CACHE = "foodlens-shell-v4"'), "v9 sw: app-shell cache bumped to v4 so stale shells are purged");
+ok(v9SwSrc.includes('const CACHE = "foodlens-shell-v5"'), "v10 sw: app-shell cache bumped to v5 so stale shells are purged");
 
 console.log(`unit-tests: ${n} assertions passed`);
 rmSync(out, { recursive: true, force: true });

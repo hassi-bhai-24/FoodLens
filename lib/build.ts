@@ -10,4 +10,7 @@
 // (lib/provider-net.ts), client-side 45 s first-byte / 40 s chunk /
 // 180 s total watchdogs with clear error text, pure greetings answered
 // instantly from code, service-worker cache bumped to v4.
-export const BUILD_LABEL = "preview v9";
+// preview v10: Hugging Face provider added (router.huggingface.co/v1,
+// default Qwen/Qwen3.8-27B, vision on) with a distinct 402 credits
+// error (lib/proxy.ts). No other provider touched.
+export const BUILD_LABEL = "preview v10";
