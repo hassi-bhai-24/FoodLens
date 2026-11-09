@@ -35,7 +35,7 @@ const { FOODLENS_SYSTEM_PROMPT } = require(join(out, "prompt.js"));
 const { TRANSCRIPTION_ONLY_INSTRUCTION } = require(join(out, "prompt.js"));
 const { flagUnverifiedAnalysis, extractENumbers, ALLERGEN_TERMS, assessImageQuality } = require(join(out, "photo-check.js"));
 const { delimitedBlock, formatAboutMe, formatBarcodeData } = require(join(out, "delimit.js"));
-const { CHAT_TEMPERATURE, defaultModelForProvider, resolveChatModel, geminiFallbackChain } = require(join(out, "models.js"));
+const { CHAT_TEMPERATURE, defaultModelForProvider, HF_MODEL_SUGGESTIONS, resolveChatModel, geminiFallbackChain } = require(join(out, "models.js"));
 const { answerLocally } = require(join(out, "local-answers.js"));
 const React = require("react");
 const { renderToString } = require("react-dom/server");
@@ -201,6 +201,14 @@ ok(defaultModelForProvider("anthropic", {}) === "claude-sonnet-5-5", "Anthropic 
 ok(defaultModelForProvider("huggingface", {}) === "Qwen/Qwen3.8-27B", "Hugging Face built-in default is Qwen3.8 27B");
 ok(defaultModelForProvider("huggingface", { HF_MODEL: "moonshotai/Kimi-K3" }) === "moonshotai/Kimi-K3", "HF_MODEL env alias works");
 ok(resolveChatModel("huggingface", "", {}) === "Qwen/Qwen3.8-27B", "Hugging Face built-in default via resolveChatModel");
+// v11: curated Hugging Face quick picks (lib/models.ts). Every id was
+// verified live on the router 2026-11-09; the two text-only models are
+// the only ones without vision.
+ok(HF_MODEL_SUGGESTIONS.length === 8, "Hugging Face suggestions list has 8 models");
+ok(HF_MODEL_SUGGESTIONS[0].id === "Qwen/Qwen3.8-27B", "first suggestion is the Hugging Face default");
+ok(new Set(HF_MODEL_SUGGESTIONS.map((m) => m.id)).size === 8, "suggestion model ids are unique");
+ok(HF_MODEL_SUGGESTIONS.every((m) => m.id.includes("/")), "suggestion ids carry the org prefix");
+ok(HF_MODEL_SUGGESTIONS.filter((m) => !m.vision).map((m) => m.id).join(",") === "XiaomiMiMo/MiMo-V2.6-Pro-RL,openai/gpt-oss-120b", "exactly two suggestions are text-only");
 ok(defaultModelForProvider("gemini", { FOODLENS_GEMINI_MODEL: "gemini-custom" }) === "gemini-custom", "env default model wins over built-in");
 ok(defaultModelForProvider("gemini", { GEMINI_MODEL: "gemini-env" }) === "gemini-env", "GEMINI_MODEL env alias works");
 ok(resolveChatModel("gemini", "user-model", { FOODLENS_GEMINI_MODEL: "env-model" }) === "user-model", "user-chosen model takes precedence");
@@ -760,7 +768,7 @@ ok((await loadApiKey("anthropic")) === "verified-key-123", "v6: verified save lo
 // v6: the build label shown in Settings names this preview build, so a
 // bug report can say exactly which build is running. Pinned to the exact
 // current label and bumped with each preview-branch fix round.
-ok(BUILD_LABEL === "preview v10", "build label names the current preview build (v10)");
+ok(BUILD_LABEL === "preview v11", "build label names the current preview build (v11)");
 
 
 // ================= preview v7 =================
@@ -1053,7 +1061,9 @@ ok(v9PageSrc.includes("The connection was lost before the reply finished"), "v9 
 ok(v9PageSrc.includes("AbortSignal.timeout(30_000)"), "v9 client: Test connection is bounded too");
 ok(!v9PageSrc.includes("Something went wrong. Your message is saved"), "v9 client: the generic 'Something went wrong' fallback is gone");
 const v9SwSrc = readFileSync(join(root, "public", "sw.js"), "utf8");
-ok(v9SwSrc.includes('const CACHE = "foodlens-shell-v5"'), "v10 sw: app-shell cache bumped to v5 so stale shells are purged");
+ok(v9SwSrc.includes('const CACHE = "foodlens-shell-v6"'), "v11 sw: app-shell cache bumped to v6 so stale shells are purged");
+ok(v9PageSrc.includes("HF_MODEL_SUGGESTIONS"), "v11 client: Settings shows Hugging Face model suggestions");
+ok(v9PageSrc.includes("Leave empty to use the default"), "v11 client: model field explains the default");
 
 console.log(`unit-tests: ${n} assertions passed`);
 rmSync(out, { recursive: true, force: true });

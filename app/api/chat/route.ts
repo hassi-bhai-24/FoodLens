@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { envKey, isCustomBaseUrlAllowed, isModelNotFoundError, isQuotaError, isSafeHttpsUrl, jsonError, mapProviderError, rateLimit, resolveGeminiBaseUrl } from "@/lib/proxy";
 import { FOODLENS_SYSTEM_PROMPT, TRANSCRIPTION_ONLY_INSTRUCTION } from "@/lib/types";
-import { CHAT_TEMPERATURE, geminiFallbackChain, resolveChatModel } from "@/lib/models";
+import { CHAT_TEMPERATURE, geminiFallbackChain, HF_MODEL_SUGGESTIONS, resolveChatModel } from "@/lib/models";
 import { classifyUserText } from "@/lib/guards";
 import { formatAboutMe, formatBarcodeData } from "@/lib/delimit";
 import { fetchWithHeadersTimeout, PROVIDER_HEADERS_TIMEOUT_MS, PROVIDER_TIMEOUT_MESSAGE, SSE_INACTIVITY_TIMEOUT_MS, sseStreamFromProvider } from "@/lib/provider-net";
@@ -141,6 +141,18 @@ export async function POST(req: NextRequest) {
     system += `\n\n<user-confirmed-ingredients>\n${confirmedIngredients}\n</user-confirmed-ingredients>\nAnalyse ONLY the ingredients text inside <user-confirmed-ingredients> above. It is the text the user read and confirmed from the label. Do not use any earlier transcription or photo description. Do not state any E-number, allergen, ingredient or nutrition value that is not in the confirmed text. Do not use legibility tags such as [Directly visible], [Visual estimate], [Externally verified] or [Unknown] in this analysis. Refer to items only as text the user confirmed; do not present confirmed text as seen in the photo. End with the exact sentence: Please verify against the real label.`;
   }
   const model = (b.model || "").trim();
+
+  // v11: a photo must not be sent to a Hugging Face model that cannot
+  // see it. Only the curated text-only models are blocked here; an
+  // unknown typed model id goes to the provider and its own error
+  // surfaces instead.
+  if (b.provider === "huggingface") {
+    const hfModel = resolveChatModel("huggingface", model, process.env);
+    const suggestion = HF_MODEL_SUGGESTIONS.find((s) => s.id === hfModel);
+    if (suggestion && !suggestion.vision && b.messages.some((m) => (m.images || []).length > 0)) {
+      return jsonError("This model does not take photos. Choose a vision model (for example Qwen3.8-27B) in Settings, or remove the photo.", 400);
+    }
+  }
 
   // Local provider: Ollama / llama.cpp on localhost. Vision is not
   // supported by this path unless the local model itself is a vision

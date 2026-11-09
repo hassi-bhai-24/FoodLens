@@ -13,6 +13,22 @@ export const ANTHROPIC_DEFAULT_MODEL = "claude-sonnet-5-5";
 // router's fastest providers, and the strongest open model that takes
 // photos. Verified live on the router 2026-11-09.
 export const HF_DEFAULT_MODEL = "Qwen/Qwen3.8-27B";
+
+// Curated Hugging Face models offered as quick picks in Settings (v11).
+// Every id was verified live on the router 2026-11-09, with the input
+// modalities shown. The two text-only models are labelled so a photo
+// is never sent to a model that cannot see it (the chat route blocks
+// that combination with a clear message).
+export const HF_MODEL_SUGGESTIONS: readonly { id: string; label: string; vision: boolean }[] = [
+  { id: "Qwen/Qwen3.8-27B", label: "Qwen3.8-27B", vision: true },
+  { id: "moonshotai/Kimi-K3", label: "Kimi K3", vision: true },
+  { id: "deepseek-ai/DeepSeek-V4.1-Flash", label: "DeepSeek V4.1 Flash", vision: true },
+  { id: "zai-org/GLM-5.3-Flash", label: "GLM-5.3 Flash", vision: true },
+  { id: "XiaomiMiMo/MiMo-V2.6-Pro-RL", label: "MiMo-V2.6-Pro (text only)", vision: false },
+  { id: "openai/gpt-oss-120b", label: "gpt-oss-120b (text only)", vision: false },
+  { id: "meta-llama/Llama-4-Scout-17B-16E-Instruct", label: "Llama-4-Scout", vision: true },
+  { id: "google/gemma-4-31B-it", label: "Gemma 4 31B", vision: true },
+];
 export const LOCAL_DEFAULT_MODEL = "llama3.1";
 
 // Gemini models tried, in order, when the primary model returns a

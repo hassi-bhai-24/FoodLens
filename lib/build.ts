@@ -13,4 +13,7 @@
 // preview v10: Hugging Face provider added (router.huggingface.co/v1,
 // default Qwen/Qwen3.8-27B, vision on) with a distinct 402 credits
 // error (lib/proxy.ts). No other provider touched.
-export const BUILD_LABEL = "preview v10";
+// preview v11: model picker in Settings (text input + curated Hugging
+// Face suggestions) and a route guard that blocks photos to known
+// text-only models with a clear message.
+export const BUILD_LABEL = "preview v11";

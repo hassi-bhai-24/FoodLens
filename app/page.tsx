@@ -9,6 +9,7 @@ import { answerLocally } from "@/lib/local-answers";
 import { checkDigitValid, lookupBarcode, type BarcodeProduct } from "@/lib/barcode";
 import { Markdown } from "@/lib/markdown";
 import { DEFAULT_SETTINGS, PROVIDER_CAPABILITIES, type Chat, type ChatImage, type ChatMessage, type ProviderId, type Settings } from "@/lib/types";
+import { defaultModelForProvider, HF_MODEL_SUGGESTIONS } from "@/lib/models";
 import { BUILD_LABEL } from "@/lib/build";
 
 const CHIPS = ["What's on my plate?", "Is this biscuit healthy?", "Help me understand food labels.", "What can I cook today?", "What are these ingredients?"];
@@ -770,10 +771,21 @@ export default function Home() {
         <dialog open aria-label="Settings" onClose={() => setShowSettings(false)}>
           <h2>Settings</h2>
           <label>Provider<br />
-            <select value={settings.provider} onChange={async (e) => { const p = e.target.value as ProviderId; setSettings((s) => ({ ...s, provider: p })); setKeyInput(""); setKeySaved((await loadApiKey(p)) !== null); }}>
+            <select value={settings.provider} onChange={async (e) => { const p = e.target.value as ProviderId; setSettings((s) => ({ ...s, provider: p, model: "" })); setKeyInput(""); setKeySaved((await loadApiKey(p)) !== null); }}>
               {PROVIDER_CAPABILITIES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
             </select>
           </label>
+          <label style={{ display: "block", marginTop: 10 }}>Model<br />
+            <input type="text" value={settings.model} onChange={(e) => setSettings((s) => ({ ...s, model: e.target.value }))} placeholder={defaultModelForProvider(settings.provider)} autoComplete="off" />
+          </label>
+          <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>Leave empty to use the default for this provider. Type any model name, or pick one below.</p>
+          {settings.provider === "huggingface" && (
+            <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+              {HF_MODEL_SUGGESTIONS.map((m) => (
+                <button key={m.id} type="button" className="btn secondary" onClick={() => setSettings((s) => ({ ...s, model: m.id }))}>{m.label}</button>
+              ))}
+            </div>
+          )}
           {settings.provider !== "local" && (
             <div style={{ marginTop: 10 }}>
               <label>API key (optional)<br />
