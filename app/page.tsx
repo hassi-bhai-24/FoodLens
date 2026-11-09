@@ -22,6 +22,10 @@ function friendlyError(status: number, fallback: string): string {
   if (status === 401) return "I couldn't answer that from local knowledge. Add an API key in Settings (optional) to unlock full AI answers.";
   if (status === 429) return "The provider is rate-limited. Please wait a moment and try again.";
   if (status === 502) return "The AI provider or local model could not be reached. Check your connection, key and model, then try again.";
+  // v9: a 504 is the server's clear "provider did not answer in time"
+  // path (or a platform gateway timeout) — say so instead of "Something
+  // went wrong".
+  if (status === 504) return "The AI provider did not answer in time. Check your connection and the key in Settings, then try again.";
   return fallback;
 }
 
@@ -286,6 +290,27 @@ export default function Home() {
     let fullText = "";
     let streamed = false;
     let modelUsed: string | undefined;
+    // v9: "Thinking…" must never sit for minutes. Three watchdogs:
+    // (1) the server's first byte within 45 s (covers a stalled
+    // phone network or a platform that never responds), (2) a stream
+    // chunk at least every 40 s once replying starts, (3) a hard
+    // 3-minute total cap. When one fires, the fetch is aborted with a
+    // clear reason so the user sees exactly what happened. The server
+    // has its own 30 s timeouts, so in normal operation the server's
+    // clear message arrives first; these are the client-side backstop.
+    const FIRST_BYTE_TIMEOUT_MS = 45_000;
+    const CHUNK_INACTIVITY_MS = 40_000;
+    const TOTAL_CAP_MS = 180_000;
+    let watchdogReason: "first-byte" | "inactivity" | "total" | null = null;
+    let firstByteArrived = false;
+    let serverError: string | null = null;
+    let httpError: string | null = null;
+    let inactivityTimer: number | null = null;
+    const clearInactivity = () => { if (inactivityTimer !== null) { window.clearTimeout(inactivityTimer); inactivityTimer = null; } };
+    const armInactivity = () => { clearInactivity(); inactivityTimer = window.setTimeout(() => { watchdogReason = "inactivity"; controller.abort(); }, CHUNK_INACTIVITY_MS); };
+    const firstByteTimer = window.setTimeout(() => { if (!firstByteArrived) { watchdogReason = "first-byte"; controller.abort(); } }, FIRST_BYTE_TIMEOUT_MS);
+    const totalTimer = window.setTimeout(() => { watchdogReason = "total"; controller.abort(); }, TOTAL_CAP_MS);
+    const clearWatchdogs = () => { window.clearTimeout(firstByteTimer); window.clearTimeout(totalTimer); clearInactivity(); };
     try {
       const apiKey = savedKey;
       const res = await fetch("/api/chat", {
@@ -305,11 +330,15 @@ export default function Home() {
           messages: history.map((m) => ({ role: m.role, text: m.text, images: m.images?.map((i) => ({ dataUrl: i.dataUrl, mime: i.mime })) })),
         }),
       });
+      firstByteArrived = true;
+      window.clearTimeout(firstByteTimer);
+      armInactivity();
       setThinking(false);
       setStatusLine("");
       if (!res.ok) {
-        let msg = friendlyError(res.status, "Something went wrong. Your message is saved in the chat — try again.");
+        let msg = friendlyError(res.status, `The reply could not start — the server returned an error (${res.status}). Your message is saved in the chat — try again in a moment.`);
         try { const j = await res.json(); if (j?.error) msg = j.error; } catch { /* keep friendly message */ }
+        httpError = msg;
         throw new Error(msg);
       }
       const reader = res.body!.getReader();
@@ -318,6 +347,8 @@ export default function Home() {
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
+        // v9: a chunk arrived — the reply is alive; reset the clock.
+        armInactivity();
         buf += decoder.decode(value, { stream: true });
         const lines = buf.split("\n");
         buf = lines.pop() || "";
@@ -326,15 +357,26 @@ export default function Home() {
           const payload = line.slice(5).trim();
           if (payload === "[DONE]") continue;
           try {
-            const j = JSON.parse(payload) as { delta?: string; model?: string };
+            const j = JSON.parse(payload) as { delta?: string; model?: string; error?: string };
             if (j.model) modelUsed = j.model;
+            // v9: the server's timeout/stall messages arrive as error
+            // events — show that exact text, and keep what streamed.
+            if (j.error) {
+              serverError = j.error;
+              throw new Error(j.error);
+            }
             if (j.delta) {
               fullText += j.delta;
               streamed = true;
               const current = fullText;
               setChats((prev) => prev.map((c) => (c.id === chat.id ? { ...c, messages: c.messages.map((m) => (m.id === assistant.id ? { ...m, text: current } : m)) } : c)));
             }
-          } catch { /* ignore partial SSE lines */ }
+          } catch (e) {
+            // A server error event must propagate, not be swallowed as
+            // a partial-line parse error.
+            if (serverError) throw e;
+            /* ignore partial SSE lines */
+          }
         }
       }
             // Deterministic backstop (Batch 2): in analyse-confirmed mode, flag
@@ -347,15 +389,38 @@ export default function Home() {
       await saveChat(finalChat);
       return { sent: true, text: fullText, model: modelUsed };
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Something went wrong.";
+      // v9: name what actually happened instead of a generic "Something
+      // went wrong": server timeout/stall message > client watchdog >
+      // user Stop > lost connection > raw error.
+      let msg: string;
+      if (serverError) {
+        msg = serverError;
+      } else if (httpError) {
+        // The server answered with a clear error before any stream
+        // started (timeout, bad key, quota…) — keep its exact text.
+        msg = httpError;
+      } else if (controller.signal.aborted && watchdogReason === "first-byte") {
+        msg = "The AI provider did not answer in time — I stopped waiting after 45 seconds. This is usually a slow or blocked connection, or the provider being down. Check your connection and the key in Settings, then try again.";
+      } else if (controller.signal.aborted && watchdogReason === "inactivity") {
+        msg = "The reply stopped part-way through — no new text arrived for 40 seconds, so I stopped waiting. What arrived so far is saved in your chat. Check your connection and try again.";
+      } else if (controller.signal.aborted && watchdogReason === "total") {
+        msg = "The reply was still going after three minutes, so I stopped it. What arrived so far is saved in your chat — try again, or ask a shorter question.";
+      } else if (controller.signal.aborted) {
+        msg = "Generation stopped. The partial reply was kept.";
+      } else if (firstByteArrived) {
+        msg = "The connection was lost before the reply finished. What arrived so far is saved in your chat. Check your connection and try again.";
+      } else {
+        msg = e instanceof Error && e.message ? e.message : "The request could not reach the server. Check your connection — your message is saved in the chat, try again.";
+      }
       // Partial replies are saved, never discarded silently.
       const partial: ChatMessage = { ...assistant, text: fullText || msg, status: "error" };
       const partialChat: Chat = { ...working, messages: working.messages.map((m) => (m.id === assistant.id ? partial : m)) };
       setChats((prev) => prev.map((c) => (c.id === chat.id ? partialChat : c)));
       await putChat(partialChat).catch(() => undefined);
-      setError(controller.signal.aborted ? "Generation stopped. The partial reply was kept." : msg);
+      setError(msg);
       return { sent: streamed, text: fullText, model: modelUsed };
     } finally {
+      clearWatchdogs();
       setGenerating(false);
       setThinking(false);
       setStatusLine("");
@@ -440,9 +505,12 @@ export default function Home() {
     setTestStatus("Testing…");
     try {
       const apiKey = await loadApiKey(settings.provider);
+      // v9: bounded like the chat path — "Testing…" must never hang
+      // either. 30 s to the first chunk is generous for a live check.
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(30_000),
         body: JSON.stringify({ provider: settings.provider, model: settings.model || undefined, customBaseUrl: settings.customBaseUrl || undefined, apiKey: apiKey || undefined, messages: [{ role: "user", text: "In one short sentence, what is FOODLENS?" }] }),
       });
       if (!res.ok) {
@@ -455,8 +523,11 @@ export default function Home() {
       await reader.read();
       await reader.cancel().catch(() => undefined);
       setTestStatus("Connection OK — the provider responded.");
-    } catch {
-      setTestStatus("Failed: could not reach the provider. Check your connection, key and model.");
+    } catch (e) {
+      const timedOut = e instanceof Error && (e as Error & { name?: string }).name === "TimeoutError";
+      setTestStatus(timedOut
+        ? "Failed: the provider did not answer within 30 seconds. Check your connection, key and model."
+        : "Failed: could not reach the provider. Check your connection, key and model.");
     }
   }
 

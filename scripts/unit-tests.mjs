@@ -22,7 +22,7 @@ try {
 // the compiled output resolves from the project's node_modules.
 const out = mkdtempSync(join(root, ".qa-tmp-"));
 execSync(
-  `./node_modules/.bin/tsc lib/guards.ts lib/checkdigit.ts lib/proxy.ts lib/prompt.ts lib/models.ts lib/markdown.tsx lib/photo-check.ts lib/delimit.ts lib/local-answers.ts lib/crypto.ts lib/db.ts lib/build.ts --outDir ${out} --module commonjs --target es2022 --jsx react --esModuleInterop --skipLibCheck --moduleResolution node`,
+  `./node_modules/.bin/tsc lib/guards.ts lib/checkdigit.ts lib/proxy.ts lib/prompt.ts lib/models.ts lib/markdown.tsx lib/photo-check.ts lib/delimit.ts lib/local-answers.ts lib/crypto.ts lib/db.ts lib/build.ts lib/provider-net.ts --outDir ${out} --module commonjs --target es2022 --jsx react --esModuleInterop --skipLibCheck --moduleResolution node`,
   { cwd: root, stdio: "pipe" },
 );
 const { createRequire } = await import("node:module");
@@ -109,6 +109,7 @@ const { Markdown } = require(join(out, "markdown.js"));
 const { saveApiKey, loadApiKey, removeApiKey, hasStoredApiKey, __resetWrappingKeyForTests } = require(join(out, "crypto.js"));
 const { putKv, getKv } = require(join(out, "db.js"));
 const { BUILD_LABEL } = require(join(out, "build.js"));
+const { fetchWithHeadersTimeout, sseStreamFromProvider, PROVIDER_TIMEOUT_MESSAGE, SSE_STALL_MESSAGE, SSE_UPSTREAM_ERROR_MESSAGE, PROVIDER_HEADERS_TIMEOUT_MS, SSE_INACTIVITY_TIMEOUT_MS } = require(join(out, "provider-net.js"));
 
 let n = 0;
 function ok(cond, label) {
@@ -750,7 +751,7 @@ ok((await loadApiKey("anthropic")) === "verified-key-123", "v6: verified save lo
 // v6: the build label shown in Settings names this preview build, so a
 // bug report can say exactly which build is running. Pinned to the exact
 // current label and bumped with each preview-branch fix round.
-ok(BUILD_LABEL === "preview v8", "build label names the current preview build (v8)");
+ok(BUILD_LABEL === "preview v9", "build label names the current preview build (v9)");
 
 
 // ================= preview v7 =================
@@ -884,6 +885,166 @@ for (const q of styleQuestions) {
   styleChecked++;
 }
 ok(styleChecked === styleQuestions.length, "style: all v7 answers checked against the style rules");
+
+// ================= preview v9: hang-then-fail =================
+// --- 1. Greeting guard: pure greetings answer instantly from code and
+// never touch the provider; greetings WITH a food question still pass;
+// a photo message is never intercepted by the greeting.
+const v9Greetings = ["hello", "helo", "hello!", "hello?", "hi", "hi there", "hey there", "hey, how are you?", "how are you", "how are you today?", "salam", "salaam", "aoa", "assalam o alaikum", "as-salam-u-alaikum", "good morning", "good evening foodlens", "greetings", "yo", "sup", "what's up", "who are you", "what can you do", "hello foodlens", "kaise ho", "السلام علیکم", "سلام"];
+for (const g of v9Greetings) {
+  const r = classifyUserText(g, false);
+  ok(r?.kind === "greeting", `v9 greeting: pure greeting answered from code — "${g}"`);
+  ok(!r?.text.includes("**") && !/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(r?.text || ""), `v9 greeting: reply is plain text, no bold, no emoji — "${g}"`);
+}
+ok(classifyUserText("السلام علیکم", false)?.text.includes("سلام"), "v9 greeting: Urdu-script greeting gets the Urdu reply");
+ok(!/[\u0600-\u06FF]/.test(classifyUserText("hello", false)?.text || ""), "v9 greeting: Latin greeting gets the English reply");
+// Greeting + real content is NOT a pure greeting — it must reach the model.
+const v9NotGreetings = ["hello, is banana healthy?", "hi what can I cook with rice", "hello is this milk safe?", "is banana healthy?", "hey tell me about dates fruit", "good morning what is sehri"];
+for (const g of v9NotGreetings) {
+  ok(classifyUserText(g, false)?.kind !== "greeting", `v9 greeting: greeting plus a food question still goes to the model — "${g}"`);
+}
+ok(classifyUserText("hello", false)?.kind === "greeting" && classifyUserText("hello, is banana healthy?", false) === null, "v9 greeting: the boundary is exact (pure vs with-question)");
+// A photo message is never intercepted by the greeting — vision needs the provider.
+ok(classifyUserText("hello", true) === null, "v9 greeting: photo message with greeting text is not intercepted");
+// The old non-food behaviours are untouched by the greeting layer.
+ok(classifyUserText("Write Python code for a calculator")?.kind === "redirect", "v9 greeting: coding redirect still works");
+ok(classifyUserText("Is banana healthy?") === null, "v9 greeting: food question still passes");
+
+// --- 2. Bounded provider fetch (lib/provider-net.ts): headers timeout.
+{
+  // A fetch that never resolves must be aborted at the timeout, and
+  // reported as a timeout (timedOut: true), not as a network error.
+  // The fake rejects when the signal aborts, exactly like a real
+  // stalled socket (no headers ever arrive, so it never resolves).
+  const neverFetch = (_url, init) => new Promise((_resolve, reject) => {
+    init.signal.addEventListener("abort", () => reject(new Error("aborted")));
+  });
+  const t0 = Date.now();
+  const outcome = await fetchWithHeadersTimeout("https://provider.example/v1", {}, 60, neverFetch);
+  ok(outcome.res === null && outcome.timedOut === true, "v9 fetch bound: never-answering fetch is aborted as a timeout");
+  ok(Date.now() - t0 < 2_000, "v9 fetch bound: the timeout fires promptly (not 300 s)");
+  // A fetch that answers within the timeout must NOT be aborted later:
+  // the headers timer disarms, so a slow-but-healthy stream survives.
+  let abortedAfterHeaders = false;
+  const okFetch = (_url, init) => new Promise((resolve) => {
+    init.signal.addEventListener("abort", () => { abortedAfterHeaders = true; });
+    setTimeout(() => resolve(new Response("stream-ok")), 10);
+  });
+  const okOutcome = await fetchWithHeadersTimeout("https://provider.example/v1", {}, 80, okFetch);
+  ok(okOutcome.res !== null && okOutcome.timedOut === false, "v9 fetch bound: answering fetch resolves with the response");
+  await new Promise((r) => setTimeout(r, 150));
+  ok(!abortedAfterHeaders && !okOutcome.controller.signal.aborted, "v9 fetch bound: headers timer disarms — a healthy stream is never cut by the headers timeout");
+  // A client disconnect aborts the in-flight upstream fetch.
+  const clientAbort = new AbortController();
+  const hangFetch = (_url, init) => new Promise((_resolve, reject) => {
+    init.signal.addEventListener("abort", () => reject(new Error("aborted")));
+  });
+  const hangP = fetchWithHeadersTimeout("https://provider.example/v1", {}, 5_000, hangFetch, clientAbort.signal);
+  setTimeout(() => clientAbort.abort(), 30);
+  const hangOutcome = await hangP;
+  ok(hangOutcome.res === null && hangOutcome.timedOut === false, "v9 fetch bound: client disconnect aborts the upstream fetch (not a timeout)");
+}
+ok(PROVIDER_HEADERS_TIMEOUT_MS === 30_000, "v9 fetch bound: provider headers timeout is 30 s");
+ok(SSE_INACTIVITY_TIMEOUT_MS === 30_000, "v9 fetch bound: SSE inactivity timeout is 30 s");
+ok(PROVIDER_TIMEOUT_MESSAGE.includes("did not answer in time"), "v9 fetch bound: timeout message says what happened");
+ok(SSE_STALL_MESSAGE.includes("stopped part-way through"), "v9 fetch bound: stall message says what happened");
+
+// --- 3. SSE relay with inactivity watchdog (lib/provider-net.ts).
+{
+  const extract = (line) => {
+    if (!line.startsWith("data:")) return null;
+    try {
+      const j = JSON.parse(line.slice(5));
+      return j.choices?.[0]?.delta?.content || null;
+    } catch { return null; }
+  };
+  const readAll = async (res) => {
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let text = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      text += decoder.decode(value, { stream: true });
+    }
+    return text;
+  };
+  const parseEvents = (text) => text.split("\n").filter((l) => l.startsWith("data: ")).map((l) => l.slice(6));
+
+  // (a) Stalled stream: one chunk, then silence. The watchdog must end
+  // the relay with the stall message instead of hanging forever.
+  {
+    let upstreamAborted = false;
+    const upstream = new Response(new ReadableStream({
+      start(c) { c.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ choices: [{ delta: { content: "part one " } }] })}\n\n`)); },
+      pull() { return new Promise(() => {}); }, // stall forever
+    }), { headers: { "Content-Type": "text/event-stream" } });
+    const relayed = sseStreamFromProvider(upstream, extract, "test-model", { inactivityTimeoutMs: 80, abortUpstream: () => { upstreamAborted = true; } });
+    const t0 = Date.now();
+    const text = await readAll(relayed);
+    const events = parseEvents(text);
+    const stall = events.map((e) => { try { return JSON.parse(e).error; } catch { return null; } }).find(Boolean);
+    ok(stall === SSE_STALL_MESSAGE, "v9 sse relay: stalled upstream ends with the clear stall message");
+    ok(events.some((e) => { try { return JSON.parse(e).delta === "part one "; } catch { return false; } }), "v9 sse relay: the partial text that did arrive is relayed");
+    ok(upstreamAborted, "v9 sse relay: the stalled upstream is aborted, not left hanging");
+    ok(Date.now() - t0 < 2_000, "v9 sse relay: the watchdog fires promptly (not 300 s)");
+  }
+  // (b) Healthy stream: all deltas relayed, ends with [DONE], no error.
+  {
+    const upstream = new Response(new ReadableStream({
+      async start(c) {
+        for (const p of ["alpha ", "beta ", "gamma "]) {
+          c.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ choices: [{ delta: { content: p } }] })}\n\n`));
+          await new Promise((r) => setTimeout(r, 10));
+        }
+        c.close();
+      },
+    }), { headers: { "Content-Type": "text/event-stream" } });
+    const relayed = sseStreamFromProvider(upstream, extract, "test-model", { inactivityTimeoutMs: 500, abortUpstream: () => {} });
+    const text = await readAll(relayed);
+    const events = parseEvents(text);
+    const deltas = events.map((e) => { try { return JSON.parse(e).delta; } catch { return undefined; } }).filter(Boolean);
+    ok(deltas.join("") === "alpha beta gamma ", "v9 sse relay: healthy stream relays every delta in order");
+    ok(events.includes("[DONE]"), "v9 sse relay: healthy stream ends with [DONE]");
+    ok(!events.some((e) => { try { return Boolean(JSON.parse(e).error); } catch { return false; } }), "v9 sse relay: healthy stream produces no error event");
+  }
+  // (c) Upstream errors mid-stream: the client gets the clear
+  // lost-connection message instead of a cryptic stream error.
+  {
+    const upstream = new Response(new ReadableStream({
+      start(c) { c.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ choices: [{ delta: { content: "begin " } }] })}\n\n`)); },
+      pull() { return Promise.reject(new Error("upstream socket died")); },
+    }), { headers: { "Content-Type": "text/event-stream" } });
+    const relayed = sseStreamFromProvider(upstream, extract, "test-model", { inactivityTimeoutMs: 5_000, abortUpstream: () => {} });
+    const text = await readAll(relayed);
+    const events = parseEvents(text);
+    const err = events.map((e) => { try { return JSON.parse(e).error; } catch { return null; } }).find(Boolean);
+    ok(err === SSE_UPSTREAM_ERROR_MESSAGE, "v9 sse relay: upstream mid-stream error becomes the clear lost-connection message");
+  }
+}
+
+// --- 4. Timeout wiring in the chat route and the client (source checks,
+// same style as the v7 checks above).
+const v9ChatRoute = readFileSync(join(root, "app", "api", "chat", "route.ts"), "utf8");
+ok((v9ChatRoute.match(/fetchWithHeadersTimeout\(/g) || []).length >= 3, "v9 chat route: gemini, anthropic and openai/compatible fetches all go through the bounded fetch");
+ok(v9ChatRoute.includes("PROVIDER_HEADERS_TIMEOUT_MS") && v9ChatRoute.includes("SSE_INACTIVITY_TIMEOUT_MS"), "v9 chat route: both timeout constants are used");
+ok(v9ChatRoute.includes("PROVIDER_TIMEOUT_MESSAGE") && v9ChatRoute.includes("504"), "v9 chat route: a provider timeout returns 504 with the clear message");
+ok(v9ChatRoute.includes("readBodyBounded"), "v9 chat route: error bodies are read with a cap");
+ok(v9ChatRoute.includes("req.signal"), "v9 chat route: a client disconnect stops the upstream fetch");
+ok((v9ChatRoute.match(/sseStreamFromProvider\(/g) || []).length >= 3 && v9ChatRoute.includes("inactivityTimeoutMs: SSE_INACTIVITY_TIMEOUT_MS"), "v9 chat route: all three provider streams go through the watchdog relay");
+const v9PageSrc = readFileSync(join(root, "app", "page.tsx"), "utf8");
+ok(v9PageSrc.includes("FIRST_BYTE_TIMEOUT_MS") && v9PageSrc.includes("45_000"), "v9 client: 45 s first-byte watchdog defined");
+ok(v9PageSrc.includes("CHUNK_INACTIVITY_MS") && v9PageSrc.includes("40_000"), "v9 client: 40 s chunk-inactivity watchdog defined");
+ok(v9PageSrc.includes("TOTAL_CAP_MS") && v9PageSrc.includes("180_000"), "v9 client: 180 s total cap defined");
+ok(v9PageSrc.includes("clearWatchdogs()"), "v9 client: watchdogs are cleared when the reply ends");
+ok(v9PageSrc.includes("did not answer in time"), "v9 client: timeout message says what actually happened");
+ok(v9PageSrc.includes("serverError"), "v9 client: server timeout/stall error events are shown, not swallowed");
+ok(v9PageSrc.includes("httpError"), "v9 client: a pre-stream server error keeps its exact text (not replaced by a generic message)");
+ok(v9PageSrc.includes("The connection was lost before the reply finished"), "v9 client: a dropped connection gets a clear message, not raw 'network error'");
+ok(v9PageSrc.includes("AbortSignal.timeout(30_000)"), "v9 client: Test connection is bounded too");
+ok(!v9PageSrc.includes("Something went wrong. Your message is saved"), "v9 client: the generic 'Something went wrong' fallback is gone");
+const v9SwSrc = readFileSync(join(root, "public", "sw.js"), "utf8");
+ok(v9SwSrc.includes('const CACHE = "foodlens-shell-v4"'), "v9 sw: app-shell cache bumped to v4 so stale shells are purged");
 
 console.log(`unit-tests: ${n} assertions passed`);
 rmSync(out, { recursive: true, force: true });

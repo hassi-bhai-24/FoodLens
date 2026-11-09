@@ -4,5 +4,10 @@
 // routes), on-device blurry/dark photo warning added, npm audit fixed
 // (postcss override), local engine expanded (v7 batch).
 // preview v8: docs updated (key vault, local engine, blur defence),
-// final verification pass. This is the label the user should see.
-export const BUILD_LABEL = "preview v8";
+// final verification pass.
+// preview v9: hang-then-fail fixed — every provider fetch bounded by a
+// 30 s headers timeout, SSE streams by a 30 s inactivity watchdog
+// (lib/provider-net.ts), client-side 45 s first-byte / 40 s chunk /
+// 180 s total watchdogs with clear error text, pure greetings answered
+// instantly from code, service-worker cache bumped to v4.
+export const BUILD_LABEL = "preview v9";
