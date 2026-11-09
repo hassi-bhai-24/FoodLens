@@ -7,7 +7,7 @@
 // were never purged. Fetch is network-first, so a stale shell is only
 // served when the network fails — but a failed fetch must not silently
 // serve an old build forever, which is what an unpurged cache did.
-const CACHE = "foodlens-shell-v2";
+const CACHE = "foodlens-shell-v3";
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/manifest.webmanifest"])).catch(() => undefined));
   self.skipWaiting();

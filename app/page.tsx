@@ -9,6 +9,7 @@ import { answerLocally } from "@/lib/local-answers";
 import { checkDigitValid, lookupBarcode, type BarcodeProduct } from "@/lib/barcode";
 import { Markdown } from "@/lib/markdown";
 import { DEFAULT_SETTINGS, PROVIDER_CAPABILITIES, type Chat, type ChatImage, type ChatMessage, type ProviderId, type Settings } from "@/lib/types";
+import { BUILD_LABEL } from "@/lib/build";
 
 const CHIPS = ["What's on my plate?", "Is this biscuit healthy?", "Help me understand food labels.", "What can I cook today?", "What are these ingredients?"];
 
@@ -686,6 +687,7 @@ export default function Home() {
                 <input type={showKey ? "text" : "password"} value={keyInput} onChange={(e) => setKeyInput(e.target.value)} placeholder={keySaved ? "A key is stored" : "Enter your API key"} autoComplete="off" />
               </label>
               <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>Optional — adding a key unlocks full AI answers. Without a key, FOODLENS answers from its built-in local knowledge. Keys are encrypted and stored in this browser only.</p>
+              <p style={{ fontSize: 13, marginTop: 6 }}>{keySaved ? `Key saved for ${PROVIDER_CAPABILITIES.find((p) => p.id === settings.provider)?.label || settings.provider} — verified after saving.` : `No key saved for ${PROVIDER_CAPABILITIES.find((p) => p.id === settings.provider)?.label || settings.provider} yet.`}</p>
               <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
                 <button type="button" className="btn secondary" onClick={() => setShowKey((v) => !v)}>{showKey ? "Hide" : "Show"}</button>
                 <button type="button" className="btn secondary" onClick={async () => { if (!keyInput.trim()) return; try { await saveApiKey(settings.provider, keyInput.trim()); setKeySaved(true); setKeyInput(""); setTestStatus(""); } catch { setTestStatus("Could not save the key in this browser. Check that storage is allowed, then try again."); } }}>Save key</button>
@@ -698,6 +700,7 @@ export default function Home() {
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
             <button type="button" className="btn" onClick={() => setShowSettings(false)}>Done</button>
           </div>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 10 }}>FOODLENS {BUILD_LABEL}</p>
         </dialog>
       )}
 

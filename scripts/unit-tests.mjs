@@ -22,7 +22,7 @@ try {
 // the compiled output resolves from the project's node_modules.
 const out = mkdtempSync(join(root, ".qa-tmp-"));
 execSync(
-  `./node_modules/.bin/tsc lib/guards.ts lib/checkdigit.ts lib/proxy.ts lib/prompt.ts lib/models.ts lib/markdown.tsx lib/photo-check.ts lib/delimit.ts lib/local-answers.ts lib/crypto.ts lib/db.ts --outDir ${out} --module commonjs --target es2022 --jsx react --esModuleInterop --skipLibCheck --moduleResolution node`,
+  `./node_modules/.bin/tsc lib/guards.ts lib/checkdigit.ts lib/proxy.ts lib/prompt.ts lib/models.ts lib/markdown.tsx lib/photo-check.ts lib/delimit.ts lib/local-answers.ts lib/crypto.ts lib/db.ts lib/build.ts --outDir ${out} --module commonjs --target es2022 --jsx react --esModuleInterop --skipLibCheck --moduleResolution node`,
   { cwd: root, stdio: "pipe" },
 );
 const { createRequire } = await import("node:module");
@@ -108,6 +108,7 @@ const { Markdown } = require(join(out, "markdown.js"));
 }
 const { saveApiKey, loadApiKey, removeApiKey, hasStoredApiKey, __resetWrappingKeyForTests } = require(join(out, "crypto.js"));
 const { putKv, getKv } = require(join(out, "db.js"));
+const { BUILD_LABEL } = require(join(out, "build.js"));
 
 let n = 0;
 function ok(cond, label) {
@@ -731,6 +732,24 @@ await putKv("settings", { provider: "openai", model: "", customBaseUrl: "", sear
 const savedSettings = await getKv("settings");
 ok(savedSettings?.provider === "openai" && savedSettings?.model === "", "v4: settings round-trip through storage");
 ok(resolveChatModel("gemini", "", {}) === "gemini-3.8-flash", "v4: empty model falls back to the provider default");
+
+// v6: the wrapping key is single-flight, so overlapping save/load calls
+// can never strand a blob under a wrapping key that was never stored.
+// Two concurrent saves for different providers share one wrapping key
+// and both blobs must decrypt after a fresh session.
+await Promise.all([saveApiKey("gemini", "concurrent-one"), saveApiKey("openai", "concurrent-two")]);
+__resetWrappingKeyForTests();
+ok((await loadApiKey("gemini")) === "concurrent-one", "v6: concurrent saves share one wrapping key (gemini)");
+ok((await loadApiKey("openai")) === "concurrent-two", "v6: concurrent saves share one wrapping key (openai)");
+// v6: saveApiKey verifies its own save — it proves the stored blob
+// decrypts with the stored wrapping key before reporting success, so a
+// save that did not really persist is never silently accepted.
+await saveApiKey("anthropic", "verified-key-123");
+__resetWrappingKeyForTests();
+ok((await loadApiKey("anthropic")) === "verified-key-123", "v6: verified save loads after a fresh session");
+// v6: the build label shown in Settings names this preview build, so a
+// bug report can say exactly which build is running.
+ok(BUILD_LABEL === "preview v6", "v6: build label names this preview build");
 
 console.log(`unit-tests: ${n} assertions passed`);
 rmSync(out, { recursive: true, force: true });
